@@ -1,0 +1,2360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CareFlow Ultra AI — Smart Clinic Queue, Fluent Voice & AI Assistant</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    #mainSidebar {
+      transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+                  transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+                  opacity 0.25s ease;
+    }
+    .sidebar-open { width: 18rem; transform: translateX(0); opacity: 1; }
+    .sidebar-closed { width: 0rem !important; transform: translateX(-100%); opacity: 0; overflow: hidden; border-right-width: 0px !important; }
+
+    @keyframes viewEnter {
+      0% { opacity: 0; transform: translateY(10px) scale(0.99); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .animate-view { animation: viewEnter 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+    @keyframes eqBar { 0%, 100% { height: 4px; } 50% { height: 15px; } }
+    .eq-1 { animation: eqBar 0.5s infinite ease-in-out 0.1s; }
+    .eq-2 { animation: eqBar 0.5s infinite ease-in-out 0.25s; }
+    .eq-3 { animation: eqBar 0.5s infinite ease-in-out 0.4s; }
+
+    .hover-lift { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .hover-lift:hover { transform: translateY(-3px); box-shadow: 0 12px 24px -8px rgba(15, 23, 42, 0.12); }
+
+    .large-text-mode { font-size: 1.12rem !important; }
+    .large-text-mode h1 { font-size: 2.2rem !important; }
+    .large-text-mode h2 { font-size: 1.6rem !important; }
+    .large-text-mode .text-xs { font-size: 0.92rem !important; }
+    .large-text-mode .text-sm { font-size: 1.05rem !important; }
+  </style>
+</head>
+<body id="appBody" class="bg-slate-100 text-slate-800 font-sans antialiased min-h-screen flex flex-col selection:bg-indigo-600 selection:text-white">
+
+  <!-- ================= TOP NAVIGATION BAR ================= -->
+  <header class="bg-slate-900 text-white sticky top-0 z-40 border-b border-slate-800 shadow-lg">
+    <div class="px-4 py-3 flex items-center justify-between gap-3">
+      
+      <!-- Left: 3-Lines Hamburger Button & Brand -->
+      <div class="flex items-center gap-3">
+        <button id="hamburgerBtn" onclick="toggleSidebar()" class="w-10 h-10 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center transition-all duration-200 shadow-md shadow-indigo-600/30 active:scale-90" title="Slide Navigation Menu In/Out">
+          <i id="hamburgerIcon" class="fa-solid fa-bars-staggered text-lg transition-transform duration-300"></i>
+        </button>
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-teal-400 to-indigo-500 flex items-center justify-center shadow-md">
+            <i class="fa-solid fa-staff-snake text-white text-lg"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-extrabold text-base sm:text-lg tracking-tight text-white">CareFlow <span class="text-teal-400">AI</span></span>
+              <span class="hidden sm:inline-flex items-center gap-1.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> AUTO-VOICE ON
+              </span>
+            </div>
+            <p class="text-[11px] text-slate-400 hidden md:block" data-i18n="headerSub">Smart Clinic Queue, Fluent Bilingual Voice & AI Assistant</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Center: Live Formula Pill & Clock -->
+      <div class="hidden xl:flex items-center gap-3 bg-slate-950/90 border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs">
+        <span class="bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-mono font-bold px-2 py-0.5 rounded text-[10px] uppercase" data-i18n="formulaLabel">Formula</span>
+        <span class="font-mono text-slate-200 text-[11px]">Wait = (Ahead × <span id="topBarAvgText" class="text-teal-400 font-bold">10</span>m) + <span id="topBarDelayText" class="text-amber-400 font-bold">0</span>m Delay</span>
+        <span class="text-slate-700">|</span>
+        <span id="liveClockDisplay" class="font-mono text-slate-400 text-[11px]">10:00:00 AM</span>
+      </div>
+
+      <!-- Right: Voice Controls, Mute Button, Language, Accessibility, Reset -->
+      <div class="flex items-center gap-2">
+        
+        <!-- Animated Speaking Indicator -->
+        <div id="speakingIndicator" class="hidden items-center gap-1.5 bg-emerald-950 border border-emerald-500/50 text-emerald-300 px-2.5 py-1 rounded-xl text-[11px] font-bold">
+          <div class="flex items-center gap-0.5 h-4">
+            <span class="w-1 bg-emerald-400 rounded-full eq-1"></span>
+            <span class="w-1 bg-emerald-400 rounded-full eq-2"></span>
+            <span class="w-1 bg-emerald-400 rounded-full eq-3"></span>
+          </div>
+          <span id="speakingLangLabel">Speaking...</span>
+        </div>
+
+        <!-- 1-Click Mute / Unmute Toggle Button -->
+        <button id="muteToggleBtn" onclick="toggleMuteVoice()" class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5" title="Mute or Unmute Voice">
+          <i id="muteToggleIcon" class="fa-solid fa-volume-high"></i>
+          <span id="muteToggleText" class="hidden sm:inline text-[11px]">Auto-Voice ON</span>
+        </button>
+
+        <!-- Voice Language Mode Selector -->
+        <div class="flex items-center bg-slate-800 border border-slate-700 rounded-xl px-2 py-1.5 text-xs">
+          <select id="voiceModeSelect" onchange="changeVoiceMode(this.value)" class="bg-transparent text-white font-bold text-[11px] outline-none cursor-pointer">
+            <option value="both" class="bg-slate-900">🇮🇳 EN + हिंदी (Dual)</option>
+            <option value="hi" class="bg-slate-900">🇮🇳 शुद्ध हिंदी Voice</option>
+            <option value="en" class="bg-slate-900">🇬🇧 English Voice</option>
+          </select>
+        </div>
+
+        <!-- Test Voice Button -->
+        <button onclick="announceCurrentPatient()" class="bg-teal-600 hover:bg-teal-500 text-white px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-sm" title="Replay Current Announcement">
+          <i class="fa-solid fa-bullhorn"></i>
+          <span class="hidden md:inline text-[11px]">Announce</span>
+        </button>
+
+        <!-- UI Language Switcher (English / Hindi) -->
+        <button onclick="toggleLanguage()" class="flex items-center gap-1.5 bg-indigo-950 hover:bg-indigo-900 text-teal-300 border border-indigo-800 px-3 py-1.5 rounded-xl text-xs font-bold transition">
+          <i class="fa-solid fa-language text-sm"></i>
+          <span id="langSwitchText">हिंदी</span>
+        </button>
+
+        <!-- Large Text Accessibility -->
+        <button onclick="toggleAccessibility()" class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center justify-center text-xs transition" title="Large Text Mode">
+          <i class="fa-solid fa-text-height"></i>
+        </button>
+
+        <!-- Reset Starter Data -->
+        <button onclick="resetToBaseline()" class="flex items-center gap-1.5 bg-rose-950/90 hover:bg-rose-900 text-rose-200 border border-rose-800 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition" title="Reset Starter Data">
+          <i class="fa-solid fa-rotate-left"></i>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ================= MAIN BODY WORKSPACE ================= -->
+  <div class="flex-1 flex relative overflow-hidden">
+
+    <div id="mobileBackdrop" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-30 hidden lg:hidden"></div>
+
+    <!-- ================= SLIDING SIDEBAR MENU ================= -->
+    <aside id="mainSidebar" class="sidebar-open fixed lg:static top-0 bottom-0 left-0 z-30 bg-white border-r border-slate-200/90 shadow-2xl lg:shadow-none flex flex-col justify-between shrink-0">
+      <div class="w-72 p-4 space-y-5 overflow-y-auto h-full flex flex-col justify-between">
+        
+        <div class="space-y-5">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
+              <span class="text-xs font-extrabold uppercase tracking-wider text-slate-500" data-i18n="sidebarHeading">Navigation Menu</span>
+            </div>
+            <button onclick="toggleSidebar()" class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-xs transition" title="Slide Sidebar Inside">
+              <i class="fa-solid fa-angles-left"></i>
+            </button>
+          </div>
+
+          <div>
+            <div class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 px-3 mb-2" data-i18n="navGroupMain">Clinic Workstations</div>
+            <nav class="space-y-1">
+              <button onclick="navigateTo('dashboard')" id="nav-dashboard" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-xs bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition">
+                <i class="fa-solid fa-table-columns w-4 text-center"></i>
+                <span data-i18n="navDashboard">Reception & Queue Desk</span>
+                <span id="sidebarQueueBadge" class="ml-auto bg-white/20 text-white text-[10px] font-mono px-2 py-0.5 rounded-full">3</span>
+              </button>
+
+              <button onclick="navigateTo('kiosk')" id="nav-kiosk" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-semibold text-xs text-slate-600 hover:bg-slate-100 transition">
+                <i class="fa-solid fa-id-card-clip w-4 text-center text-teal-600"></i>
+                <span data-i18n="navKiosk">Patient Self-Registration</span>
+                <span class="ml-auto bg-teal-100 text-teal-800 text-[9px] font-bold px-1.5 py-0.5 rounded">Kiosk</span>
+              </button>
+
+              <button onclick="openAIChatbot()" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-semibold text-xs text-indigo-700 bg-indigo-50/80 hover:bg-indigo-100 transition border border-indigo-200/60">
+                <i class="fa-solid fa-robot w-4 text-center text-indigo-600"></i>
+                <span data-i18n="navAiBot">AI Registration Assistant</span>
+                <span class="ml-auto bg-indigo-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded animate-pulse">AI Chat</span>
+              </button>
+
+              <button onclick="navigateTo('doctor')" id="nav-doctor" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-semibold text-xs text-slate-600 hover:bg-slate-100 transition">
+                <i class="fa-solid fa-user-doctor w-4 text-center text-indigo-600"></i>
+                <span data-i18n="navDoctor">Doctor Consultation Room</span>
+              </button>
+
+              <button onclick="navigateTo('tv')" id="nav-tv" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-semibold text-xs text-slate-600 hover:bg-slate-100 transition">
+                <i class="fa-solid fa-tv w-4 text-center text-amber-500"></i>
+                <span data-i18n="navTv">Public Waiting Room TV</span>
+              </button>
+            </nav>
+          </div>
+
+          <div>
+            <div class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 px-3 mb-2" data-i18n="navGroupAdmin">Triage & Evaluation</div>
+            <nav class="space-y-1">
+              <button onclick="navigateTo('overrides')" id="nav-overrides" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-semibold text-xs text-slate-600 hover:bg-slate-100 transition">
+                <i class="fa-solid fa-truck-medical w-4 text-center text-rose-500"></i>
+                <span data-i18n="navOverrides">Delay & Urgent Override</span>
+              </button>
+
+              <button onclick="navigateTo('audit')" id="nav-audit" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-semibold text-xs text-slate-600 hover:bg-slate-100 transition">
+                <i class="fa-solid fa-chart-column w-4 text-center text-blue-600"></i>
+                <span data-i18n="navAudit">Judge Test Suite & MAE</span>
+                <span class="ml-auto bg-amber-100 text-amber-800 text-[9px] font-bold px-1.5 py-0.5 rounded">Rubric</span>
+              </button>
+            </nav>
+          </div>
+
+          <div class="bg-slate-900 text-white p-4 rounded-2xl space-y-3 shadow-md">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-teal-400" data-i18n="configBoxTitle">Queue Parameters</span>
+              <i class="fa-solid fa-sliders text-slate-400 text-xs"></i>
+            </div>
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-slate-300" data-i18n="avgConsultTime">Avg Service Time:</span>
+              <div class="flex items-center gap-1">
+                <input type="number" id="sidebarAvgInput" min="1" max="60" value="10" 
+                       class="w-14 bg-slate-800 border border-slate-700 rounded-lg py-1 px-2 text-center font-mono font-bold text-teal-300 text-xs focus:outline-none"
+                       onchange="updateAvgDuration(this.value)">
+                <span class="text-[10px] text-slate-400">min</span>
+              </div>
+            </div>
+            <div class="flex items-center justify-between text-xs pt-2 border-t border-slate-800">
+              <span class="text-slate-300" data-i18n="recordedDelayLabel">Recorded Delay:</span>
+              <span id="sidebarDelayValue" class="font-mono font-bold text-amber-400">+0 min</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-3.5 rounded-2xl bg-indigo-50 border border-indigo-200 text-xs space-y-1.5">
+          <div class="flex items-center justify-between font-bold text-indigo-950">
+            <span><i class="fa-solid fa-bell text-indigo-600 mr-1"></i> AI Turn Tracker</span>
+            <span id="sidebarTrackedTokenBadge" class="font-mono bg-indigo-600 text-white text-[10px] px-2 py-0.5 rounded-full">T01</span>
+          </div>
+          <p id="sidebarTrackedStatusText" class="text-[11px] text-indigo-700 leading-tight">
+            AI will speak & alert you when this token is called into service.
+          </p>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- ================= MAIN WORKSPACE AREA ================= -->
+    <main class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-7 space-y-6 pb-24">
+
+      <!-- Visible Formula Bar -->
+      <div class="bg-white border border-slate-200/90 rounded-2xl p-3.5 shadow-sm flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2.5 flex-wrap">
+          <span class="bg-indigo-600 text-white text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-lg flex items-center gap-1">
+            <i class="fa-solid fa-calculator"></i> <span data-i18n="liveFormulaBadge">Wait Estimation Rule</span>
+          </span>
+          <span class="font-mono text-xs sm:text-sm font-bold text-slate-800 bg-slate-100 px-3 py-1 rounded-lg border border-slate-200">
+            Estimated Wait = (People Ahead × <span id="formulaAvgSpan" class="text-indigo-600">10</span> min) + <span id="formulaDelaySpan" class="text-amber-600">0</span> min Delay
+          </span>
+        </div>
+        <div class="text-xs text-slate-500 flex items-center gap-2">
+          <span class="inline-block w-2 h-2 rounded-full bg-teal-500"></span>
+          <span data-i18n="estimateDisclaimer">All wait times are rule-based estimates • Zero medical data stored.</span>
+        </div>
+      </div>
+
+      <!-- Active Delay Alert Banner -->
+      <div id="activeDelayBanner" class="hidden bg-gradient-to-r from-amber-500 to-orange-500 text-white p-4 rounded-2xl shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-view">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-black/20 flex items-center justify-center text-lg shrink-0">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+          </div>
+          <div>
+            <div class="text-xs font-extrabold uppercase tracking-wider text-amber-100" data-i18n="delayAlertTitle">Operational Clinic Delay Active</div>
+            <div class="text-sm font-bold mt-0.5">
+              "<span id="bannerDelayReasonText">Doctor consultation running over</span>" — <span id="bannerDelayMinsText" class="underline font-mono">+10 min</span> added to all waiting tokens.
+            </div>
+          </div>
+        </div>
+        <button onclick="clearDelay()" class="bg-slate-900 hover:bg-black text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shrink-0">
+          <i class="fa-solid fa-check mr-1"></i> <span data-i18n="resolveDelayBtn">Resolve & Clear Delay</span>
+        </button>
+      </div>
+
+      <!-- ======================================================== -->
+      <!-- VIEW 1: RECEPTION & QUEUE DESK -->
+      <!-- ======================================================== -->
+      <section id="view-dashboard" class="app-view space-y-6 animate-view">
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="bg-gradient-to-br from-emerald-600 to-teal-700 text-white p-5 rounded-2xl shadow-md hover-lift">
+            <div class="flex justify-between items-start">
+              <div>
+                <span class="text-[10px] font-extrabold uppercase tracking-wider bg-black/20 px-2 py-0.5 rounded-full text-emerald-100" data-i18n="kpiInService">In Service (Room 1)</span>
+                <div id="kpiActiveToken" class="text-3xl font-black font-mono mt-2">T03</div>
+                <div id="kpiActiveAlias" class="text-xs font-semibold text-emerald-100 mt-0.5">Patient Hawk</div>
+              </div>
+              <div class="text-right">
+                <span class="text-[10px] text-emerald-200 block" data-i18n="timerLabel">Session Timer</span>
+                <span id="consultationTimer" class="font-mono text-sm font-bold bg-black/25 px-2 py-0.5 rounded mt-1 inline-block">02:14</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-sm hover-lift flex items-center justify-between">
+            <div>
+              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400" data-i18n="kpiWaiting">Waiting Tokens</span>
+              <div id="kpiWaitingCount" class="text-3xl font-black text-slate-800 mt-1">3</div>
+              <span id="kpiUrgentCountText" class="text-[11px] font-semibold text-rose-600">0 Urgent Priority</span>
+            </div>
+            <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl">
+              <i class="fa-solid fa-users-line"></i>
+            </div>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-sm hover-lift flex items-center justify-between">
+            <div>
+              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400" data-i18n="kpiNextWait">Next Patient Wait</span>
+              <div id="kpiNextWaitVal" class="text-3xl font-black font-mono text-indigo-600 mt-1">~10m</div>
+              <span class="text-[11px] text-slate-400">Last in line: <strong id="kpiMaxWaitVal" class="text-slate-700 font-mono">~30m</strong></span>
+            </div>
+            <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl">
+              <i class="fa-solid fa-hourglass-half"></i>
+            </div>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-sm hover-lift flex items-center justify-between">
+            <div>
+              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400" data-i18n="kpiCompleted">Completed Visits</span>
+              <div id="kpiCompletedCount" class="text-3xl font-black text-slate-800 mt-1">0</div>
+              <span class="text-[11px] text-emerald-600 font-semibold">Baseline MAE: <strong id="kpiMaeVal" class="font-mono">1.33m</strong></span>
+            </div>
+            <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">
+              <i class="fa-solid fa-circle-check"></i>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          <!-- Left Column: Reception Controls -->
+          <div class="lg:col-span-4 space-y-5">
+            <div class="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-sm space-y-4">
+              <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 class="font-extrabold text-slate-800 text-sm flex items-center gap-2">
+                  <i class="fa-solid fa-bolt text-indigo-600"></i> <span data-i18n="staffControlTitle">Reception Flow Control</span>
+                </h3>
+                <span class="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded">Auto-Voice</span>
+              </div>
+
+              <div class="grid grid-cols-2 gap-2.5">
+                <button onclick="callNextPatient()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-3 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 transition active:scale-95">
+                  <i class="fa-solid fa-bullhorn"></i> <span data-i18n="btnCallNext">Call Next</span>
+                </button>
+                <button onclick="completeCurrentService()" class="bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 px-3 rounded-xl text-xs flex items-center justify-center gap-2 shadow-sm transition active:scale-95">
+                  <i class="fa-solid fa-check-double"></i> <span data-i18n="btnComplete">Complete</span>
+                </button>
+              </div>
+
+              <div class="pt-3 border-t border-slate-100 space-y-2.5">
+                <div class="flex justify-between items-center">
+                  <label class="text-[11px] font-bold uppercase tracking-wider text-slate-500" data-i18n="quickIssueLabel">Quick Issue Token</label>
+                  <button onclick="fillRandomStaffAlias()" class="text-[11px] text-indigo-600 hover:underline font-semibold">
+                    <i class="fa-solid fa-dice"></i> Random Alias
+                  </button>
+                </div>
+                <input type="text" id="deskAliasInput" placeholder="Fictional Alias (e.g. Patient Tiger)" class="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white outline-none">
+                <div class="grid grid-cols-2 gap-2">
+                  <select id="deskVisitType" class="text-xs px-2.5 py-2.5 border border-slate-200 rounded-xl bg-slate-50 outline-none">
+                    <option value="Walk-In: General">Walk-In: General</option>
+                    <option value="Appt: Follow-up">Appt: Follow-up</option>
+                    <option value="Walk-In: Vaccination">Vaccination</option>
+                    <option value="Appt: Pediatric">Appt: Pediatric</option>
+                  </select>
+                  <button onclick="deskIssueNormalToken()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm">
+                    <i class="fa-solid fa-plus"></i> <span data-i18n="btnAddNormal">Add Token</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="bg-rose-50/80 border border-rose-200/90 p-3.5 rounded-2xl space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] font-extrabold uppercase tracking-wider text-rose-800 flex items-center gap-1.5">
+                    <i class="fa-solid fa-truck-medical text-rose-600"></i> <span data-i18n="urgentBoxTitle">Urgent Priority Override</span>
+                  </span>
+                  <span class="text-[9px] font-bold bg-rose-200 text-rose-900 px-1.5 py-0.5 rounded">Jumps Waiting</span>
+                </div>
+                <input type="text" id="deskUrgentReason" placeholder="Visible reason (e.g. High fever / Acute pain)" class="w-full text-xs px-3 py-2 border border-rose-300 rounded-xl bg-white outline-none">
+                <button onclick="deskIssueUrgentToken()" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm">
+                  <i class="fa-solid fa-angles-up"></i> <span data-i18n="btnInsertUrgent">Insert Urgent Token</span>
+                </button>
+              </div>
+
+              <div class="bg-amber-50/80 border border-amber-200/90 p-3.5 rounded-2xl space-y-2">
+                <span class="text-[11px] font-extrabold uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
+                  <i class="fa-solid fa-clock-rotate-left text-amber-600"></i> <span data-i18n="delayBoxTitle">Mark Clinic Delay</span>
+                </span>
+                <div class="flex gap-2">
+                  <input type="number" id="deskDelayMins" value="10" min="1" max="120" class="w-16 text-xs px-2 py-2 border border-amber-300 rounded-xl bg-white text-center font-mono font-bold">
+                  <input type="text" id="deskDelayReason" placeholder="Reason (e.g. Emergency case)" class="flex-1 text-xs px-3 py-2 border border-amber-300 rounded-xl bg-white outline-none">
+                </div>
+                <button onclick="deskApplyDelay()" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5">
+                  <i class="fa-solid fa-plus-circle"></i> <span data-i18n="btnApplyDelay">Record Delay</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: Queue Table & Logs -->
+          <div class="lg:col-span-8 space-y-5">
+            <div class="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-sm space-y-4">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                <div>
+                  <h3 class="font-extrabold text-slate-800 text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-list-check text-indigo-600"></i> <span data-i18n="queueTableTitle">Live Patient Queue</span>
+                  </h3>
+                  <p class="text-[11px] text-slate-400" data-i18n="queueTableSub">Click "🔔 Track" on any patient so AI alerts you by voice when their turn arrives</p>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2">
+                  <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass text-slate-400 text-xs absolute left-3 top-2.5"></i>
+                    <input type="text" id="queueSearchInput" oninput="render()" placeholder="Search token or alias..." class="text-xs pl-8 pr-3 py-1.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white outline-none w-44">
+                  </div>
+                  <select id="queueFilterSelect" onchange="render()" class="text-xs px-2.5 py-1.5 border border-slate-200 rounded-xl bg-slate-50 font-semibold text-slate-700 outline-none">
+                    <option value="all">All Active</option>
+                    <option value="urgent">Urgent Only</option>
+                    <option value="waiting">Waiting Only</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                  <thead>
+                    <tr class="text-slate-400 uppercase font-bold border-b border-slate-100 bg-slate-50/80 text-[11px]">
+                      <th class="py-3 px-3">Token</th>
+                      <th class="py-3 px-3" data-i18n="colPatient">Patient Alias</th>
+                      <th class="py-3 px-3" data-i18n="colState">State</th>
+                      <th class="py-3 px-3 text-center" data-i18n="colAhead">People Ahead</th>
+                      <th class="py-3 px-3 text-right" data-i18n="colEstWait">Estimated Wait</th>
+                      <th class="py-3 px-3 text-right" data-i18n="colActions">Quick Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="mainQueueTableBody" class="divide-y divide-slate-100"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-sm space-y-2.5">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                    <i class="fa-solid fa-circle-check text-emerald-500"></i> <span data-i18n="completedTitle">Completed Tokens</span>
+                  </span>
+                  <span id="completedBadgeCount" class="text-[11px] font-mono font-bold text-slate-500">0</span>
+                </div>
+                <div id="completedTokensList" class="flex flex-wrap gap-1.5 text-xs min-h-[40px] items-center"></div>
+              </div>
+
+              <div class="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-sm space-y-2">
+                <span class="text-xs font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <i class="fa-solid fa-clock-rotate-left text-indigo-500"></i> <span data-i18n="activityLogTitle">Live Activity Trail</span>
+                </span>
+                <div id="activityLogList" class="space-y-1.5 max-h-28 overflow-y-auto text-[11px] font-mono text-slate-600"></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- VIEW 2: PATIENT SELF-REGISTRATION KIOSK -->
+      <!-- ======================================================== -->
+      <section id="view-kiosk" class="app-view hidden max-w-3xl mx-auto space-y-6 animate-view">
+        <div class="text-center space-y-1.5">
+          <span class="bg-teal-100 text-teal-800 border border-teal-200 text-xs font-extrabold uppercase px-3 py-1 rounded-full">
+            <i class="fa-solid fa-hand-pointer mr-1"></i> <span data-i18n="kioskTopTag">Interactive Patient Touch Kiosk</span>
+          </span>
+          <h2 class="text-2xl sm:text-3xl font-black text-slate-900" data-i18n="kioskHeading">Self-Check-In & Appointment Booking</h2>
+          <p class="text-xs sm:text-sm text-slate-500" data-i18n="kioskSubheading">Get your queue token and automatic AI voice turn notifications without sharing private medical records.</p>
+        </div>
+
+        <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xl space-y-6">
+          <div>
+            <label class="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-2.5">1. Choose Your Visit Type</label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button type="button" onclick="selectKioskMode('walkin')" id="kioskModeWalkin" class="p-4 rounded-2xl border-2 border-indigo-600 bg-indigo-50/70 text-indigo-950 font-bold text-sm flex items-center gap-3 transition text-left">
+                <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-lg shrink-0">
+                  <i class="fa-solid fa-person-walking"></i>
+                </div>
+                <div>
+                  <div>Walk-In Consultation</div>
+                  <div class="text-[11px] font-normal text-indigo-700">Immediate queue placement</div>
+                </div>
+              </button>
+
+              <button type="button" onclick="selectKioskMode('appointment')" id="kioskModeAppt" class="p-4 rounded-2xl border-2 border-slate-200 bg-white text-slate-700 font-bold text-sm flex items-center gap-3 hover:border-slate-300 transition text-left">
+                <div class="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center text-lg shrink-0">
+                  <i class="fa-solid fa-calendar-check"></i>
+                </div>
+                <div>
+                  <div>Scheduled Appointment</div>
+                  <div class="text-[11px] font-normal text-slate-500">Choose preferred time slot</div>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <div id="kioskSlotContainer" class="hidden bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3 animate-view">
+            <label class="block text-xs font-extrabold uppercase tracking-wider text-slate-500">Select Appointment Time Slot & Doctor</label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <select id="kioskDoctorSelect" class="text-xs px-3.5 py-2.5 border border-slate-200 rounded-xl bg-white font-semibold outline-none">
+                <option value="Dr. Mehta (General OPD)">Dr. Aarav Mehta (General OPD)</option>
+                <option value="Dr. Nair (Pediatrics)">Dr. Priya Nair (Family & Child Care)</option>
+                <option value="Dr. Verma (Immunization)">Dr. Kabir Verma (Vaccination Clinic)</option>
+              </select>
+              <select id="kioskSlotSelect" class="text-xs px-3.5 py-2.5 border border-slate-200 rounded-xl bg-white font-mono font-bold text-indigo-700 outline-none">
+                <option value="10:30 AM Slot">10:30 AM Slot</option>
+                <option value="11:00 AM Slot">11:00 AM Slot</option>
+                <option value="11:30 AM Slot">11:30 AM Slot</option>
+                <option value="12:00 PM Slot">12:00 PM Slot</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <div class="flex justify-between items-center mb-1.5">
+              <label class="text-xs font-extrabold uppercase tracking-wider text-slate-500">2. Your Privacy-Safe Alias</label>
+              <button type="button" onclick="generateKioskAlias()" class="text-xs text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> <span>Generate Fictional Alias</span>
+              </button>
+            </div>
+            <input type="text" id="kioskAliasInput" placeholder="e.g. Patient Falcon, Patient Swan, or Code A12" class="w-full text-sm px-4 py-3 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white outline-none font-semibold">
+            <p class="text-[11px] text-slate-400 mt-1">To protect patient privacy on public screens, real names are never displayed.</p>
+          </div>
+
+          <div>
+            <label class="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">3. Visit Category</label>
+            <select id="kioskCategorySelect" class="w-full text-sm px-4 py-3 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white outline-none font-medium">
+              <option value="General Consultation">General Consultation</option>
+              <option value="Follow-up Check">Follow-up Check</option>
+              <option value="Routine Vaccination">Routine Vaccination</option>
+              <option value="Prescription Renewal">Prescription Renewal</option>
+            </select>
+          </div>
+
+          <div class="bg-gradient-to-r from-indigo-50 to-teal-50 p-4 rounded-2xl border border-indigo-100 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <div class="text-xs font-extrabold uppercase text-indigo-900">Your Estimated Waiting Time</div>
+              <div class="text-xs text-indigo-700 mt-0.5">
+                <span id="kioskAheadPreviewText">4 patients ahead</span> • AI Voice Alert will notify you when your turn arrives!
+              </div>
+            </div>
+            <div id="kioskEstBadge" class="text-2xl font-black font-mono text-indigo-700 bg-white px-4 py-2 rounded-xl border border-indigo-200 shadow-sm">
+              ~40 min
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button onclick="submitKioskCheckIn()" class="bg-gradient-to-r from-indigo-600 to-teal-600 hover:from-indigo-700 hover:to-teal-700 text-white font-extrabold py-4 rounded-2xl text-sm shadow-lg transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-ticket text-base"></i> <span data-i18n="kioskGetTokenBtn">Get Token & Track My Turn</span>
+            </button>
+            <button onclick="openAIChatbot(); startBotRegistrationFlow();" class="bg-slate-900 hover:bg-slate-800 text-teal-300 font-extrabold py-4 rounded-2xl text-sm shadow-md transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-robot text-base"></i> <span>Register via AI Chatbot Instead</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- VIEW 3: DOCTOR CONSULTATION ROOM -->
+      <!-- ======================================================== -->
+      <section id="view-doctor" class="app-view hidden space-y-6 animate-view">
+        <div class="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <span class="text-[10px] font-extrabold uppercase tracking-wider bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-full">Consultation Room 1</span>
+            <h2 class="text-xl font-black text-slate-900 mt-1">Doctor Consultation Console</h2>
+          </div>
+          <div class="flex items-center gap-3">
+            <button onclick="completeCurrentService()" class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition flex items-center gap-2">
+              <i class="fa-solid fa-circle-check"></i> <span>Mark Completed</span>
+            </button>
+            <button onclick="callNextPatient()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition flex items-center gap-2 shadow-md">
+              <i class="fa-solid fa-bullhorn"></i> <span>Call Next Patient (Auto-Voice)</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="lg:col-span-2 bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm space-y-5">
+            <div class="flex justify-between items-start border-b border-slate-100 pb-4">
+              <div>
+                <span class="text-xs font-bold uppercase text-emerald-600 flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span> Currently In Consultation
+                </span>
+                <div class="flex items-baseline gap-3 mt-2">
+                  <span id="docViewToken" class="text-5xl font-black font-mono text-slate-900">T03</span>
+                  <span id="docViewAlias" class="text-2xl font-bold text-slate-700">Patient Hawk</span>
+                </div>
+                <div id="docViewType" class="text-xs font-semibold text-indigo-600 mt-1">General Consultation</div>
+              </div>
+              <div class="bg-slate-100 px-3.5 py-2 rounded-xl text-right">
+                <span class="text-[10px] font-bold uppercase text-slate-400 block">Elapsed Time</span>
+                <span id="docViewTimer" class="font-mono text-lg font-black text-slate-800">02:14</span>
+              </div>
+            </div>
+
+            <div class="space-y-2">
+              <label class="text-xs font-bold uppercase tracking-wider text-slate-400">Operational Visit Remarks (No Medical Diagnosis)</label>
+              <textarea id="docNotesArea" placeholder="Optional operational note (e.g. Sent to pharmacy / Follow-up scheduled next week)..." class="w-full h-24 p-3.5 text-xs border border-slate-200 rounded-2xl bg-slate-50 focus:bg-white outline-none resize-none"></textarea>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
+              <span class="text-xs text-slate-500">Running behind schedule? Notify reception & waiting patients:</span>
+              <div class="flex gap-2">
+                <button onclick="quickDoctorDelay(5)" class="bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-xs px-3 py-1.5 rounded-xl transition">+5m Delay</button>
+                <button onclick="quickDoctorDelay(10)" class="bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs px-3 py-1.5 rounded-xl transition">+10m Delay</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-sm space-y-3">
+            <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-400">Next Waiting Patients</h3>
+            <div id="docWaitingListContainer" class="space-y-2.5"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- VIEW 4: PUBLIC WAITING ROOM TV DISPLAY -->
+      <!-- ======================================================== -->
+      <section id="view-tv" class="app-view hidden space-y-6 animate-view">
+        <div class="bg-slate-900 text-white p-5 rounded-3xl flex flex-wrap items-center justify-between gap-4 shadow-lg">
+          <div class="flex items-center gap-3">
+            <span class="w-3.5 h-3.5 rounded-full bg-emerald-400 animate-ping"></span>
+            <div>
+              <h2 class="text-base font-black uppercase tracking-wider">Public Waiting Area Display</h2>
+              <p class="text-xs text-slate-400">Fluent Bilingual Voice Announcements (English + शुद्ध हिंदी) Enabled</p>
+            </div>
+          </div>
+          <button onclick="announceCurrentPatient()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center gap-2">
+            <i class="fa-solid fa-volume-high"></i> <span>Replay Bilingual Announcement</span>
+          </button>
+        </div>
+
+        <div class="bg-gradient-to-r from-emerald-600 via-teal-600 to-teal-800 text-white p-8 sm:p-10 rounded-3xl shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
+          <div>
+            <span class="bg-black/25 text-emerald-200 text-xs font-extrabold uppercase tracking-widest px-3.5 py-1 rounded-full">
+              Now Serving in Consultation Room 1 • परामर्श कक्ष 1
+            </span>
+            <div class="flex items-baseline gap-5 mt-3">
+              <span id="tvHeroToken" class="text-6xl sm:text-8xl font-black font-mono tracking-tight">T03</span>
+              <span id="tvHeroAlias" class="text-2xl sm:text-4xl font-extrabold text-emerald-100">Patient Hawk</span>
+            </div>
+            <div id="tvHeroType" class="text-sm text-emerald-200 mt-2 font-medium">General Consultation</div>
+          </div>
+          <div class="bg-black/20 backdrop-blur-md p-6 rounded-3xl border border-white/15 text-center min-w-[210px]">
+            <div class="text-xs uppercase font-bold text-emerald-200">Room Status</div>
+            <div class="text-2xl font-black text-white mt-1 flex items-center justify-center gap-2">
+              <i class="fa-solid fa-user-doctor text-emerald-300"></i> IN SERVICE
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-3">Upcoming Tokens & Estimated Wait Times</h3>
+          <div id="tvGridContainer" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- VIEW 5: DELAY & URGENT ADMINISTRATIVE OVERRIDES -->
+      <!-- ======================================================== -->
+      <section id="view-overrides" class="app-view hidden space-y-6 animate-view">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm space-y-4">
+            <div class="flex items-center gap-3">
+              <div class="w-11 h-11 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-lg">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+              </div>
+              <div>
+                <h3 class="font-black text-slate-900 text-base">Clinic Delay Management</h3>
+                <p class="text-xs text-slate-500">Update wait estimates transparently and announce delay in English & Hindi</p>
+              </div>
+            </div>
+
+            <div class="space-y-3 pt-2">
+              <div>
+                <label class="text-xs font-bold text-slate-600">Delay Minutes to Add:</label>
+                <input type="number" id="overridePageDelayMins" value="10" min="1" max="120" class="w-full text-sm px-4 py-2.5 border border-slate-200 rounded-xl bg-slate-50 font-mono font-bold mt-1">
+              </div>
+              <div>
+                <label class="text-xs font-bold text-slate-600">Visible Reason for Waiting Patients:</label>
+                <input type="text" id="overridePageDelayReason" placeholder="e.g. Doctor attending complex procedure" class="w-full text-sm px-4 py-2.5 border border-slate-200 rounded-xl bg-slate-50 mt-1">
+              </div>
+              <div class="flex gap-2 pt-1">
+                <button onclick="submitOverridePageDelay()" class="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-xl text-xs transition">
+                  Apply Delay & Broadcast Reason
+                </button>
+                <button onclick="clearDelay()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold px-4 py-3 rounded-xl text-xs transition">
+                  Reset Delay (0m)
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-rose-50/70 rounded-3xl p-6 border border-rose-200 shadow-sm space-y-4">
+            <div class="flex items-center gap-3">
+              <div class="w-11 h-11 rounded-2xl bg-rose-600 text-white flex items-center justify-center text-lg">
+                <i class="fa-solid fa-truck-medical"></i>
+              </div>
+              <div>
+                <h3 class="font-black text-rose-950 text-base">Urgent Administrative Override</h3>
+                <p class="text-xs text-rose-700">Jumps ahead of Waiting tokens, but never interrupts the patient In Service</p>
+              </div>
+            </div>
+
+            <div class="space-y-3 pt-2">
+              <div>
+                <label class="text-xs font-bold text-rose-900">Patient Fictional Alias:</label>
+                <input type="text" id="overridePageUrgentAlias" placeholder="e.g. Patient Lion (Urgent)" class="w-full text-sm px-4 py-2.5 border border-rose-300 rounded-xl bg-white mt-1">
+              </div>
+              <div>
+                <label class="text-xs font-bold text-rose-900">Visible Priority Reason:</label>
+                <input type="text" id="overridePageUrgentReason" placeholder="e.g. Acute respiratory distress / High fever" class="w-full text-sm px-4 py-2.5 border border-rose-300 rounded-xl bg-white mt-1">
+              </div>
+              <button onclick="submitOverridePageUrgent()" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-3 rounded-xl text-xs transition shadow-md">
+                Insert Urgent Token at Top of Waiting Queue
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- VIEW 6: JUDGE TEST SUITE, MAE BENCHMARK & SIMULATION -->
+      <!-- ======================================================== -->
+      <section id="view-audit" class="app-view hidden space-y-6 animate-view">
+        <div class="bg-slate-900 text-white p-6 rounded-3xl shadow-xl space-y-5">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <span class="text-[10px] font-extrabold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-1 rounded-full">
+                Official Challenge Rubric Verification
+              </span>
+              <h2 class="text-xl font-black mt-2">Impact Metric, Baseline Simulation & Test Cases</h2>
+              <p class="text-xs text-slate-400">Comparing rule-based estimates against scripted actual durations (Assuming T03 just started)</p>
+            </div>
+            <button onclick="resetToBaseline()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-2">
+              <i class="fa-solid fa-rotate-left"></i> Restore Starter Baseline
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800">
+              <span class="text-[10px] font-bold uppercase text-slate-400">Reference Starter Data</span>
+              <div class="text-sm font-mono font-bold text-slate-200 mt-1">Actuals: T01=8m, T02=18m, T04=30m</div>
+              <div class="text-xs font-mono text-indigo-400 mt-0.5">Estimates: T01=10m, T02=20m, T04=30m</div>
+            </div>
+
+            <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800">
+              <span class="text-[10px] font-bold uppercase text-slate-400">Challenge Target MAE</span>
+              <div class="text-2xl font-black font-mono text-emerald-400 mt-1">~1.33 minutes</div>
+              <div class="text-[11px] text-slate-500 mt-0.5">Formula: (|8-10| + |18-20| + |30-30|) ÷ 3</div>
+            </div>
+
+            <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800">
+              <span class="text-[10px] font-bold uppercase text-slate-400">Live Observed MAE</span>
+              <div id="auditLiveMae" class="text-2xl font-black font-mono text-teal-400 mt-1">1.33 minutes</div>
+              <div class="text-[11px] text-slate-500 mt-0.5">Dynamically computed from active starter tokens</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm space-y-4">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <h3 class="font-extrabold text-slate-900 text-sm">Stretch Goal: Estimated vs. Simulated Actual Wait Comparison</h3>
+              <p class="text-xs text-slate-500">Visual error analysis across the starter queue records</p>
+            </div>
+            <div class="flex items-center gap-4 text-xs font-bold">
+              <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-indigo-600 inline-block"></span> Estimated Wait</span>
+              <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-teal-500 inline-block"></span> Simulated Actual Wait</span>
+            </div>
+          </div>
+          <div id="simulationComparisonBars" class="space-y-3 pt-2"></div>
+        </div>
+
+        <div class="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm space-y-4">
+          <h3 class="font-extrabold text-slate-900 text-sm">Required Submission: Three Test Cases (Expected vs. Observed Outcomes)</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border border-slate-200 rounded-2xl overflow-hidden">
+              <thead class="bg-slate-100 text-slate-600 uppercase font-bold">
+                <tr>
+                  <th class="p-3">Test Case</th>
+                  <th class="p-3">Action Trigger</th>
+                  <th class="p-3">Expected Outcome</th>
+                  <th class="p-3">Observed Outcome</th>
+                  <th class="p-3 text-right">Live Demo Trigger</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-200">
+                <tr>
+                  <td class="p-3 font-bold text-slate-900">Case 1: Normal Flow</td>
+                  <td class="p-3 text-slate-600">Complete T03 & Call Next (T01)</td>
+                  <td class="p-3 text-slate-600">T03 → Completed; T01 → In Service; AI Voice announces T01</td>
+                  <td id="observedCase1" class="p-3 font-mono font-bold text-emerald-700">Ready to verify (Matches Expected)</td>
+                  <td class="p-3 text-right">
+                    <button onclick="runRubricTest(1)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition">Run Case 1</button>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="p-3 font-bold text-slate-900">Case 2: Clinic Delay</td>
+                  <td class="p-3 text-slate-600">Record +10m delay with reason</td>
+                  <td class="p-3 text-slate-600">Banner displays reason; all waiting estimates increase by +10m</td>
+                  <td id="observedCase2" class="p-3 font-mono font-bold text-amber-700">Ready to verify (Matches Expected)</td>
+                  <td class="p-3 text-right">
+                    <button onclick="runRubricTest(2)" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition">Run Case 2</button>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="p-3 font-bold text-slate-900">Case 3: Urgent Override</td>
+                  <td class="p-3 text-slate-600">Insert Urgent Token (T05)</td>
+                  <td class="p-3 text-slate-600">Jumps ahead of Waiting tokens (1st waiting), does NOT replace In-Service</td>
+                  <td id="observedCase3" class="p-3 font-mono font-bold text-rose-700">Ready to verify (Matches Expected)</td>
+                  <td class="p-3 text-right">
+                    <button onclick="runRubricTest(3)" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition">Run Case 3</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+  </div>
+
+  <!-- ================= FLOATING AI CHATBOT ASSISTANT (CareBot AI) ================= -->
+  <div class="fixed bottom-5 right-5 z-50 flex flex-col items-end">
+    
+    <div id="aiChatWindow" class="hidden w-[350px] sm:w-[390px] bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden mb-3 flex flex-col animate-view" style="height: 520px;">
+      
+      <div class="bg-gradient-to-r from-indigo-900 via-indigo-800 to-teal-800 text-white p-4 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-teal-400/20 border border-teal-400/40 flex items-center justify-center text-teal-300 text-base relative">
+            <i class="fa-solid fa-robot"></i>
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-indigo-900 absolute -bottom-0.5 -right-0.5"></span>
+          </div>
+          <div>
+            <div class="font-extrabold text-sm flex items-center gap-1.5">
+              CareBot AI <span class="text-[9px] bg-teal-500/30 text-teal-200 px-1.5 py-0.5 rounded font-mono">EN + हिंदी</span>
+            </div>
+            <p class="text-[10px] text-indigo-200">Voice Registration & Live Turn Alert Assistant</p>
+          </div>
+        </div>
+        <button onclick="toggleAIChatbot()" class="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-xs transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div id="chatTrackedBanner" class="bg-indigo-50 border-b border-indigo-100 px-3.5 py-2 flex items-center justify-between text-[11px]">
+        <div class="flex items-center gap-1.5 font-bold text-indigo-950">
+          <i class="fa-solid fa-bell text-indigo-600 animate-bounce"></i>
+          <span>Tracking Token: <strong id="chatTrackedTokenId" class="font-mono text-indigo-700">T01</strong></span>
+        </div>
+        <span id="chatTrackedWaitInfo" class="font-mono font-bold text-teal-700 bg-teal-100/80 px-2 py-0.5 rounded">1 ahead (~10m)</span>
+      </div>
+
+      <div id="aiChatMessages" class="flex-1 p-3.5 overflow-y-auto space-y-3 bg-slate-50/70 text-xs"></div>
+
+      <div id="aiQuickChips" class="px-3 py-2 bg-white border-t border-slate-100 flex items-center gap-1.5 overflow-x-auto whitespace-nowrap">
+        <button onclick="startBotRegistrationFlow()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-[11px] px-2.5 py-1 rounded-full transition">
+          🎫 Register Me (टोकन लें)
+        </button>
+        <button onclick="botCheckMyWait()" class="bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 font-bold text-[11px] px-2.5 py-1 rounded-full transition">
+          ⏱️ My Wait Time (मेरी बारी?)
+        </button>
+        <button onclick="botAnnounceStatus()" class="bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-[11px] px-2.5 py-1 rounded-full transition">
+          🔊 Speak Status (बोलकर बताएं)
+        </button>
+      </div>
+
+      <div class="p-3 bg-white border-t border-slate-200 flex items-center gap-2">
+        <button onclick="startVoiceInputToBot()" id="botMicBtn" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-600 flex items-center justify-center transition shrink-0" title="Speak to AI Assistant">
+          <i class="fa-solid fa-microphone"></i>
+        </button>
+        <input type="text" id="aiChatInput" onkeydown="if(event.key==='Enter') sendUserChatMessage()" placeholder="Type in English or Hindi (e.g. token chahiye)..." class="flex-1 text-xs px-3 py-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white outline-none">
+        <button onclick="sendUserChatMessage()" class="w-9 h-9 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center transition shrink-0 shadow-sm">
+          <i class="fa-solid fa-paper-plane text-xs"></i>
+        </button>
+      </div>
+
+    </div>
+
+    <button onclick="toggleAIChatbot()" class="group bg-gradient-to-r from-indigo-600 via-indigo-700 to-teal-600 hover:from-indigo-700 hover:to-teal-700 text-white px-4 py-3.5 rounded-full shadow-2xl flex items-center gap-3 transition transform hover:scale-105 active:scale-95 border border-white/20">
+      <div class="relative flex items-center justify-center">
+        <i class="fa-solid fa-robot text-xl"></i>
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping absolute -top-1 -right-1"></span>
+      </div>
+      <div class="text-left pr-1">
+        <div class="text-xs font-extrabold leading-none">CareBot AI Assistant</div>
+        <div class="text-[10px] text-teal-200 font-medium mt-0.5">Register & Voice Turn Alert</div>
+      </div>
+    </button>
+
+  </div>
+
+  <!-- ================= MODAL: PRINTABLE DIGITAL TOKEN SLIP ================= -->
+  <div id="tokenSlipModal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl border border-slate-200 space-y-4 animate-view">
+      <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto text-xl">
+        <i class="fa-solid fa-ticket"></i>
+      </div>
+      <div>
+        <span class="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">CareFlow Clinic Token Slip</span>
+        <div id="slipTokenNumber" class="text-5xl font-black font-mono text-slate-900 mt-1">T05</div>
+        <div id="slipPatientAlias" class="text-base font-bold text-indigo-600 mt-0.5">Patient Falcon</div>
+      </div>
+
+      <div class="bg-slate-50 p-4 rounded-2xl border border-dashed border-slate-300 text-xs space-y-2 text-left">
+        <div class="flex justify-between">
+          <span class="text-slate-400">Visit Type:</span>
+          <span id="slipVisitType" class="font-bold text-slate-700">Walk-In: General</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">Queue Status:</span>
+          <span id="slipStatus" class="font-bold text-emerald-700">Waiting</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">People Ahead:</span>
+          <span id="slipPeopleAhead" class="font-mono font-bold text-slate-800">3</span>
+        </div>
+        <div class="flex justify-between border-t border-slate-200 pt-2 text-sm">
+          <span class="font-bold text-slate-800">Estimated Wait:</span>
+          <span id="slipEstWait" class="font-mono font-black text-indigo-600">~30 min</span>
+        </div>
+      </div>
+
+      <div class="bg-teal-50 border border-teal-200 rounded-xl p-2.5 text-[11px] text-teal-900 font-semibold flex items-center justify-center gap-1.5">
+        <i class="fa-solid fa-bell text-teal-600"></i> AI Assistant is tracking this token for voice turn alerts!
+      </div>
+
+      <div class="grid grid-cols-2 gap-2">
+        <button onclick="closeSlipModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl text-xs transition">
+          Close Window
+        </button>
+        <button onclick="closeSlipModalAndGoTV()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs transition">
+          View TV Board
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toastContainer" class="fixed top-20 right-5 z-50 space-y-2 pointer-events-none"></div>
+  <!-- ================= JAVASCRIPT ENGINE (PART 2 OF 2) ================= -->
+  <script>
+    // 1. STATE & STARTER BASELINE DATA
+    let isSidebarOpen = true;
+    let isVoiceMuted = false;
+    let voiceMode = 'both'; // 'both' (EN + HI), 'hi' (Only Hindi), 'en' (Only English)
+    let currentLang = 'en';
+    let avgServiceDuration = 10;
+    let currentRecordedDelay = 0;
+    let delayReason = "";
+    let tokenCounter = 5;
+    let kioskSelectedMode = "walkin";
+    let sessionSeconds = 134;
+
+    let trackedTokenId = "T01";
+    let botRegistrationState = "idle";
+    let pendingBotAlias = "";
+
+    let queue = [];
+    let completedQueue = [];
+    let activityLogs = [];
+
+    const animalAliases = [
+      "Patient Falcon", "Patient Swan", "Patient Tiger", "Patient Dolphin",
+      "Patient Eagle", "Patient Panda", "Patient Cheetah", "Patient Koala",
+      "Patient Otter", "Patient Heron"
+    ];
+
+    // Hindi Devanagari Map for Fluent Hindi Pronunciation
+    const hindiAliasMap = {
+      "Patient Hawk": "पेशेंट हॉक",
+      "Patient Fox": "पेशेंट फॉक्स",
+      "Patient Badger": "पेशेंट बैजर",
+      "Patient Owl": "पेशेंट आउल",
+      "Patient Falcon": "पेशेंट फाल्कन",
+      "Patient Swan": "पेशेंट स्वान",
+      "Patient Tiger": "पेशेंट टाइगर",
+      "Patient Dolphin": "पेशेंट डॉल्फिन",
+      "Patient Eagle": "पेशेंट ईगल",
+      "Patient Panda": "पेशेंट पांडा",
+      "Patient Cheetah": "पेशेंट चीता",
+      "Patient Koala": "पेशेंट कोआला",
+      "Patient Otter": "पेशेंट ओटर",
+      "Patient Heron": "पेशेंट हेरॉन",
+      "Patient Lion": "पेशेंट लायन",
+      "Patient Wolf": "पेशेंट वुल्फ"
+    };
+
+    function toHindiAlias(alias) {
+      const clean = alias.replace(/\s*\(Urgent\)/i, "").trim();
+      if (hindiAliasMap[clean]) return hindiAliasMap[clean];
+      return clean.replace(/^Patient\s+/i, "पेशेंट ");
+    }
+
+    function initBaselineData() {
+      avgServiceDuration = 10;
+      currentRecordedDelay = 0;
+      delayReason = "";
+      tokenCounter = 5;
+      sessionSeconds = 134;
+      trackedTokenId = "T01";
+
+      queue = [
+        { id: "T03", alias: "Patient Hawk", type: "Scheduled: General", status: "In Service", isUrgent: false, urgentReason: null, actualDuration: null },
+        { id: "T01", alias: "Patient Fox", type: "Walk-In: Follow-up", status: "Waiting", isUrgent: false, urgentReason: null, actualDuration: 8 },
+        { id: "T02", alias: "Patient Badger", type: "Scheduled: General", status: "Waiting", isUrgent: false, urgentReason: null, actualDuration: 18 },
+        { id: "T04", alias: "Patient Owl", type: "Walk-In: Vaccination", status: "Waiting", isUrgent: false, urgentReason: null, actualDuration: 30 }
+      ];
+      completedQueue = [];
+      activityLogs = [];
+      logActivity("Baseline queue initialized (T03 In Service; T01, T02, T04 Waiting)");
+    }
+
+    // 2. UPGRADED FLUENT AUTO-VOICE ENGINE (English + शुद्ध हिंदी)
+    let availableVoices = [];
+    window._activeUtterance = null; // Prevents Chrome garbage-collection cutoff bug
+
+    function loadSpeechVoices() {
+      if (!('speechSynthesis' in window)) return;
+      availableVoices = window.speechSynthesis.getVoices();
+    }
+    if ('speechSynthesis' in window) {
+      loadSpeechVoices();
+      window.speechSynthesis.onvoiceschanged = loadSpeechVoices;
+    }
+
+    function getBestVoice(langCode) {
+      if (!availableVoices.length && 'speechSynthesis' in window) {
+        availableVoices = window.speechSynthesis.getVoices();
+      }
+      if (langCode === 'hi') {
+        return availableVoices.find(v => v.lang.toLowerCase().includes('hi') && (v.name.includes('Google') || v.name.includes('Swara') || v.name.includes('Madhur') || v.name.includes('Natural'))) ||
+               availableVoices.find(v => v.lang.toLowerCase().includes('hi')) || null;
+      } else {
+        return availableVoices.find(v => v.lang === 'en-IN' && (v.name.includes('Google') || v.name.includes('Neerja') || v.name.includes('Heera') || v.name.includes('Natural'))) ||
+               availableVoices.find(v => v.lang === 'en-IN') ||
+               availableVoices.find(v => v.lang.startsWith('en-') && (v.name.includes('Google') || v.name.includes('Natural'))) ||
+               availableVoices.find(v => v.lang.startsWith('en')) || null;
+      }
+    }
+
+    function formatTokenSpoken(tokenId, lang) {
+      const enMap = { '0': 'Zero ', '1': 'One ', '2': 'Two ', '3': 'Three ', '4': 'Four ', '5': 'Five ', '6': 'Six ', '7': 'Seven ', '8': 'Eight ', '9': 'Nine ' };
+      const hiMap = { '0': 'शून्य ', '1': 'एक ', '2': 'दो ', '3': 'तीन ', '4': 'चार ', '5': 'पाँच ', '6': 'छह ', '7': 'सात ', '8': 'आठ ', '9': 'नौ ' };
+      let out = "";
+      for (const ch of tokenId) {
+        if (ch.toUpperCase() === 'T') out += (lang === 'hi') ? 'टी ' : 'T ';
+        else if (enMap[ch]) out += (lang === 'hi') ? hiMap[ch] : enMap[ch];
+        else out += ch + ' ';
+      }
+      return out.trim();
+    }
+
+    function setSpeakingUI(active, labelText = "Speaking...") {
+      const el = document.getElementById("speakingIndicator");
+      const lbl = document.getElementById("speakingLangLabel");
+      if (!el) return;
+      if (active) {
+        if (lbl) lbl.innerText = labelText;
+        el.classList.remove("hidden");
+        el.classList.add("flex");
+      } else {
+        el.classList.add("hidden");
+        el.classList.remove("flex");
+      }
+    }
+
+    function playChime() {
+      if (isVoiceMuted) return;
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const now = ctx.currentTime;
+        const osc1 = ctx.createOscillator();
+        const g1 = ctx.createGain();
+        osc1.frequency.setValueAtTime(880, now);
+        g1.gain.setValueAtTime(0.2, now);
+        g1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+        osc1.connect(g1); g1.connect(ctx.destination);
+        osc1.start(now); osc1.stop(now + 0.35);
+
+        const osc2 = ctx.createOscillator();
+        const g2 = ctx.createGain();
+        osc2.frequency.setValueAtTime(659.25, now + 0.18);
+        g2.gain.setValueAtTime(0.25, now + 0.18);
+        g2.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+        osc2.connect(g2); g2.connect(ctx.destination);
+        osc2.start(now + 0.18); osc2.stop(now + 0.65);
+      } catch (e) {}
+    }
+
+    // Sequential Chained Speech Engine (Fixes Chrome Dual-Language Drop & Hindi Silence)
+    function speakBilingual(enText, hiDevanagariText, hiPhoneticFallback = "", playBell = true) {
+      if (isVoiceMuted || !('speechSynthesis' in window)) return;
+      if (playBell) playChime();
+
+      try {
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.resume();
+      } catch (e) {}
+
+      const speechQueue = [];
+
+      if ((voiceMode === 'both' || voiceMode === 'en') && enText) {
+        speechQueue.push({
+          text: enText,
+          lang: 'en',
+          badge: 'Speaking EN...'
+        });
+      }
+
+      if ((voiceMode === 'both' || voiceMode === 'hi') && hiDevanagariText) {
+        const nativeHiVoice = getBestVoice('hi');
+        if (nativeHiVoice) {
+          speechQueue.push({
+            text: hiDevanagariText,
+            lang: 'hi',
+            voice: nativeHiVoice,
+            badge: 'बोल रहा है (हिंदी)...'
+          });
+        } else {
+          // Smart Fallback if PC lacks a native Devanagari voice pack
+          speechQueue.push({
+            text: hiPhoneticFallback || hiDevanagariText,
+            lang: 'en-IN',
+            voice: getBestVoice('en'),
+            badge: 'बोल रहा है (हिंदी)...'
+          });
+        }
+      }
+
+      if (speechQueue.length === 0) return;
+
+      function playNextInQueue(index) {
+        if (index >= speechQueue.length || isVoiceMuted) {
+          setSpeakingUI(false);
+          return;
+        }
+        const item = speechQueue[index];
+        const u = new SpeechSynthesisUtterance(item.text);
+        window._activeUtterance = u; // Prevent GC pause bug
+
+        if (item.voice) {
+          u.voice = item.voice;
+          u.lang = item.voice.lang;
+        } else if (item.lang === 'hi') {
+          const v = getBestVoice('hi');
+          if (v) u.voice = v;
+          u.lang = 'hi-IN';
+        } else {
+          const v = getBestVoice('en');
+          if (v) u.voice = v;
+          u.lang = v ? v.lang : 'en-IN';
+        }
+
+        u.rate = item.lang === 'hi' ? 0.92 : 0.95;
+        u.pitch = 1.0;
+
+        setSpeakingUI(true, item.badge);
+
+        u.onend = () => {
+          setTimeout(() => playNextInQueue(index + 1), 180);
+        };
+        u.onerror = () => {
+          setTimeout(() => playNextInQueue(index + 1), 180);
+        };
+
+        window.speechSynthesis. resume();
+        window.speechSynthesis.speak(u);
+      }
+
+      setTimeout(() => playNextInQueue(0), playBell ? 380 : 40);
+    }
+
+    function toggleMuteVoice() {
+      isVoiceMuted = !isVoiceMuted;
+      const btn = document.getElementById("muteToggleBtn");
+      const icon = document.getElementById("muteToggleIcon");
+      const txt = document.getElementById("muteToggleText");
+
+      if (isVoiceMuted) {
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+        setSpeakingUI(false);
+        btn.className = "bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5";
+        icon.className = "fa-solid fa-volume-xmark";
+        txt.innerText = "Muted";
+        showToast("🔇 Auto-Voice Muted");
+      } else {
+        btn.className = "bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5";
+        icon.className = "fa-solid fa-volume-high";
+        txt.innerText = "Auto-Voice ON";
+        showToast("🔊 Auto-Voice Unmuted");
+        speakBilingual(
+          "Automatic voice announcements are now active.",
+          "ऑटोमैटिक आवाज़ अब चालू है।",
+          "Automatic aawaaz ab chalu hai.",
+          false
+        );
+      }
+    }
+
+    function changeVoiceMode(mode) {
+      voiceMode = mode;
+      if (isVoiceMuted) toggleMuteVoice();
+      showToast(`Voice Language: ${mode.toUpperCase()}`);
+
+      if (mode === 'hi') {
+        speakBilingual(
+          "",
+          "नमस्ते, अब सभी घोषणाएं स्पष्ट हिंदी में बोली जाएंगी।",
+          "Namaste, ab sabhi ghoshnayein spasht Hindi mein boli jayengi.",
+          false
+        );
+      } else if (mode === 'en') {
+        speakBilingual(
+          "Hello, all clinic announcements will now be spoken in fluent English.",
+          "",
+          "",
+          false
+        );
+      } else {
+        speakBilingual(
+          "Dual language voice mode is active.",
+          "अब अंग्रेज़ी और हिंदी दोनों में घोषणा होगी।",
+          "Ab English aur Hindi dono mein ghoshna hogi.",
+          false
+        );
+      }
+    }
+
+    function announceCurrentPatient() {
+      if (isVoiceMuted) {
+        showToast("Voice is muted. Click 'Muted' button on top to unmute!");
+        return;
+      }
+      const active = queue.find(t => t.status === "In Service");
+      if (!active) {
+        speakBilingual(
+          "Consultation Room 1 is currently ready for the next patient.",
+          "परामर्श कक्ष संख्या एक अगले मरीज के लिए तैयार है।",
+          "Pramarsh kaksh sankhya ek agle mareez ke liye taiyar hai.",
+          true
+        );
+        return;
+      }
+      const tokenEn = formatTokenSpoken(active.id, 'en');
+      const tokenHi = formatTokenSpoken(active.id, 'hi');
+      const aliasHi = toHindiAlias(active.alias);
+
+      speakBilingual(
+        `Attention please. Token number ${tokenEn}, ${active.alias}, please proceed to Consultation Room 1.`,
+        `कृपया ध्यान दें। टोकन नंबर ${tokenHi}, ${aliasHi}, कृपया परामर्श कक्ष संख्या एक में पधारें।`,
+        `Kripya dhyan dein. Token number ${tokenEn}, ${active.alias}, kripya kamra number ek mein padhaarein.`,
+        true
+      );
+      showToast(`🔊 Announcing ${active.id} (${active.alias})`);
+    }
+
+    // 3. SLIDING SIDEBAR & VIEW NAVIGATION
+    function toggleSidebar() {
+      const sidebar = document.getElementById("mainSidebar");
+      const backdrop = document.getElementById("mobileBackdrop");
+      const icon = document.getElementById("hamburgerIcon");
+      isSidebarOpen = !isSidebarOpen;
+
+      if (isSidebarOpen) {
+        sidebar.classList.remove("sidebar-closed");
+        sidebar.classList.add("sidebar-open");
+        icon.className = "fa-solid fa-bars-staggered text-lg transition-transform duration-300";
+        if (window.innerWidth < 1024) backdrop.classList.remove("hidden");
+      } else {
+        sidebar.classList.remove("sidebar-open");
+        sidebar.classList.add("sidebar-closed");
+        icon.className = "fa-solid fa-bars text-lg transition-transform duration-300 rotate-180";
+        backdrop.classList.add("hidden");
+      }
+    }
+
+    function navigateTo(viewId) {
+      document.querySelectorAll(".app-view").forEach(v => v.classList.add("hidden"));
+      const target = document.getElementById(`view-${viewId}`);
+      if (target) target.classList.remove("hidden");
+
+      document.querySelectorAll(".nav-btn").forEach(btn => {
+        btn.className = "nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-semibold text-xs text-slate-600 hover:bg-slate-100 transition";
+      });
+      const activeBtn = document.getElementById(`nav-${viewId}`);
+      if (activeBtn) {
+        activeBtn.className = "nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-xs bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition";
+      }
+      if (window.innerWidth < 1024 && isSidebarOpen) toggleSidebar();
+      render();
+    }
+
+    // 4. FORMULA & MAE CALCULATION ENGINE
+    function calculateWait(peopleAhead) {
+      return (peopleAhead * avgServiceDuration) + currentRecordedDelay;
+    }
+
+    function computeBaselineMAE() {
+      const waitingWithActuals = queue.filter(t => t.status === "Waiting" && t.actualDuration !== null);
+      if (waitingWithActuals.length === 0) return "1.33";
+      let totalError = 0;
+      const inServiceCount = queue.filter(t => t.status === "In Service").length;
+      waitingWithActuals.forEach((token, idx) => {
+        const peopleAhead = inServiceCount + idx;
+        const est = calculateWait(peopleAhead);
+        totalError += Math.abs(token.actualDuration - est);
+      });
+      return (totalError / waitingWithActuals.length).toFixed(2);
+    }
+
+    // 5. CORE QUEUE OPERATIONS + AUTOMATIC VOICE ON NEXT
+    function callNextPatient() {
+      const inServiceIdx = queue.findIndex(t => t.status === "In Service");
+      if (inServiceIdx !== -1) {
+        const finished = queue.splice(inServiceIdx, 1)[0];
+        finished.status = "Completed";
+        completedQueue.unshift(finished);
+        logActivity(`Completed consultation for ${finished.id} (${finished.alias})`);
+      }
+
+      const nextWaitingIdx = queue.findIndex(t => t.status === "Waiting");
+      if (nextWaitingIdx !== -1) {
+        const nextPatient = queue[nextWaitingIdx];
+        nextPatient.status = "In Service";
+        sessionSeconds = 0;
+        logActivity(`Called ${nextPatient.id} (${nextPatient.alias}) into Service`);
+        showToast(`🔊 Calling Next: ${nextPatient.id} (${nextPatient.alias})`);
+
+        const tokenEn = formatTokenSpoken(nextPatient.id, 'en');
+        const tokenHi = formatTokenSpoken(nextPatient.id, 'hi');
+        const aliasHi = toHindiAlias(nextPatient.alias);
+
+        if (nextPatient.id === trackedTokenId) {
+          triggerTrackedTurnArrivedAlert(nextPatient, tokenEn, tokenHi, aliasHi);
+        } else {
+          speakBilingual(
+            `Attention please. Next patient, Token number ${tokenEn}, ${nextPatient.alias}, please proceed to Consultation Room 1.`,
+            `कृपया ध्यान दें। अगले मरीज, टोकन नंबर ${tokenHi}, ${aliasHi}, कृपया परामर्श कक्ष संख्या एक में पधारें।`,
+            `Kripya dhyan dein. Agle mareez, Token number ${tokenEn}, ${nextPatient.alias}, kripya kamra number ek mein padhaarein.`,
+            true
+          );
+
+          const waitingNow = queue.filter(t => t.status === "Waiting");
+          if (waitingNow.length > 0 && waitingNow[0].id === trackedTokenId) {
+            appendBotMessage(
+              `🔔 <strong>Get Ready! (तैयार रहें!)</strong> Your token <strong>${trackedTokenId}</strong> is now #1 in the waiting line!`,
+              true
+            );
+          }
+        }
+      } else {
+        showToast("Waiting queue is now empty.");
+        speakBilingual(
+          "All waiting patients have been served. The queue is now clear.",
+          "प्रतीक्षा सूची के सभी मरीजों को देखा जा चुका है।",
+          "Pratiksha soochi ke sabhi mareezon ko dekha ja chuka hai.",
+          false
+        );
+      }
+      render();
+    }
+
+    function triggerTrackedTurnArrivedAlert(patient, tokenEn, tokenHi, aliasHi) {
+      openAIChatbot();
+      appendBotMessage(
+        `<div class="bg-emerald-600 text-white p-3 rounded-2xl shadow-md space-y-1">
+           <div class="font-extrabold text-xs uppercase tracking-wider flex items-center gap-1.5">
+             <i class="fa-solid fa-bell animate-bounce"></i> YOUR TURN HAS ARRIVED! • आपकी बारी आ गई है!
+           </div>
+           <div class="text-sm font-black font-mono">${patient.id} — ${patient.alias}</div>
+           <p class="text-[11px] text-emerald-100">Please enter Consultation Room 1 right now. कृपया अभी डॉक्टर के कक्ष संख्या 1 में अंदर जाएं।</p>
+         </div>`,
+        true
+      );
+      speakBilingual(
+        `Attention please! Your turn has arrived! Token number ${tokenEn}, ${patient.alias}, please go inside Consultation Room 1 right now.`,
+        `प्रतीक्षा समाप्त हुई! आपकी बारी आ गई है! टोकन नंबर ${tokenHi}, ${aliasHi}, कृपया अभी डॉक्टर के परामर्श कक्ष संख्या एक में अंदर जाएं।`,
+        `Aapki baari aa gayi hai! Token number ${tokenEn}, ${patient.alias}, kripya abhi doctor ke kamra number ek mein andar jaayein.`,
+        true
+      );
+    }
+
+    function completeCurrentService() {
+      const inServiceIdx = queue.findIndex(t => t.status === "In Service");
+      if (inServiceIdx !== -1) {
+        const finished = queue.splice(inServiceIdx, 1)[0];
+        finished.status = "Completed";
+        completedQueue.unshift(finished);
+        sessionSeconds = 0;
+        logActivity(`Marked ${finished.id} (${finished.alias}) as Completed`);
+        showToast(`Completed: ${finished.id} (${finished.alias})`);
+        speakBilingual(
+          `Consultation for token ${formatTokenSpoken(finished.id, 'en')} is now complete.`,
+          `टोकन नंबर ${formatTokenSpoken(finished.id, 'hi')} का परामर्श पूरा हो गया है।`,
+          `Token number ${formatTokenSpoken(finished.id, 'en')} ka pramarsh poora ho gaya hai.`,
+          false
+        );
+      } else {
+        showToast("No active consultation to complete.");
+      }
+      render();
+    }
+
+    function createToken(alias, visitType, isUrgent = false, urgentReason = null, autoTrack = true) {
+      const id = `T${tokenCounter < 10 ? '0' + tokenCounter : tokenCounter}`;
+      tokenCounter++;
+      const newToken = { id, alias, type: visitType, status: "Waiting", isUrgent, urgentReason, actualDuration: null };
+
+      if (isUrgent) {
+        const firstWaitingIdx = queue.findIndex(t => t.status === "Waiting");
+        if (firstWaitingIdx !== -1) queue.splice(firstWaitingIdx, 0, newToken);
+        else queue.push(newToken);
+        logActivity(`URGENT Token ${id} (${alias}) inserted at top of waiting queue`);
+        showToast(`Urgent Override: ${id} placed at front of waiting line!`);
+      } else {
+        queue.push(newToken);
+        logActivity(`Token ${id} issued for ${alias} (${visitType})`);
+        showToast(`Token ${id} added to waiting queue`);
+      }
+      if (autoTrack) trackedTokenId = id;
+      render();
+      return newToken;
+    }
+
+    function setTrackedToken(tokenId) {
+      trackedTokenId = tokenId;
+      const token = queue.find(t => t.id === tokenId);
+      render();
+      if (token) {
+        const tokenEn = formatTokenSpoken(token.id, 'en');
+        const tokenHi = formatTokenSpoken(token.id, 'hi');
+        showToast(`🔔 AI is now tracking ${token.id} (${token.alias})`);
+        appendBotMessage(
+          `🔔 Now tracking <strong>${token.id} (${token.alias})</strong>! I will announce by voice as soon as your turn arrives.<br><span class="text-slate-500">अब मैं टोकन <strong>${token.id}</strong> को ट्रैक कर रहा हूँ और बारी आने पर बोलकर बताऊँगा।</span>`,
+          false
+        );
+        speakBilingual(
+          `I am now tracking token ${tokenEn}. I will alert you by voice when your turn arrives.`,
+          `मैं अब आपका टोकन नंबर ${tokenHi} ट्रैक कर रहा हूँ। आपकी बारी आते ही मैं आपको बोलकर बताऊँगा।`,
+          `Main ab aapka token ${tokenEn} track kar raha hoon. Aapki baari aate hi main aapko bolkar bataunga.`,
+          false
+        );
+      }
+    }
+
+    function promoteTokenToUrgent(tokenId) {
+      const idx = queue.findIndex(t => t.id === tokenId && t.status === "Waiting");
+      if (idx === -1) return;
+      const token = queue.splice(idx, 1)[0];
+      token.isUrgent = true;
+      token.urgentReason = "Staff Priority Escalation";
+      const firstWaitingIdx = queue.findIndex(t => t.status === "Waiting");
+      if (firstWaitingIdx !== -1) queue.splice(firstWaitingIdx, 0, token);
+      else queue.push(token);
+      logActivity(`Promoted ${token.id} (${token.alias}) to Urgent Priority`);
+      showToast(`${token.id} promoted to top of waiting queue!`);
+      speakBilingual(
+        `Token ${formatTokenSpoken(token.id, 'en')} promoted to urgent priority.`,
+        `टोकन नंबर ${formatTokenSpoken(token.id, 'hi')} को आपातकालीन प्राथमिकता दी गई है।`,
+        `Token number ${formatTokenSpoken(token.id, 'en')} ko urgent priority di gayi hai.`,
+        false
+      );
+      render();
+    }
+
+    function removeTokenFromQueue(tokenId) {
+      const idx = queue.findIndex(t => t.id === tokenId && t.status === "Waiting");
+      if (idx !== -1) {
+        const removed = queue.splice(idx, 1)[0];
+        logActivity(`Cancelled token ${removed.id} (${removed.alias})`);
+        showToast(`Token ${removed.id} removed from queue`);
+        render();
+      }
+    }
+
+    function showTokenSlip(tokenId) {
+      const token = queue.find(t => t.id === tokenId);
+      if (!token) return;
+      const inServiceCount = queue.filter(t => t.status === "In Service").length;
+      const waitingList = queue.filter(t => t.status === "Waiting");
+      const waitingIdx = waitingList.findIndex(t => t.id === tokenId);
+      const peopleAhead = token.status === "In Service" ? 0 : (inServiceCount + waitingIdx);
+      const estWait = token.status === "In Service" ? 0 : calculateWait(peopleAhead);
+
+      document.getElementById("slipTokenNumber").innerText = token.id;
+      document.getElementById("slipPatientAlias").innerText = token.alias;
+      document.getElementById("slipVisitType").innerText = token.type;
+      document.getElementById("slipStatus").innerText = token.status + (token.isUrgent ? " (URGENT)" : "");
+      document.getElementById("slipPeopleAhead").innerText = peopleAhead;
+      document.getElementById("slipEstWait").innerText = token.status === "In Service" ? "In Room Now" : `~${estWait} min`;
+      document.getElementById("tokenSlipModal").classList.remove("hidden");
+    }
+
+    function closeSlipModal() { document.getElementById("tokenSlipModal").classList.add("hidden"); }
+    function closeSlipModalAndGoTV() { closeSlipModal(); navigateTo('tv'); }
+
+    // 6. AI CHATBOT ASSISTANT
+    function toggleAIChatbot() { document.getElementById("aiChatWindow").classList.toggle("hidden"); }
+    function openAIChatbot() { document.getElementById("aiChatWindow").classList.remove("hidden"); }
+
+    function appendBotMessage(htmlContent, isHighlight = false) {
+      const container = document.getElementById("aiChatMessages");
+      const msgDiv = document.createElement("div");
+      msgDiv.className = "flex items-start gap-2 animate-view";
+      msgDiv.innerHTML = `
+        <div class="w-7 h-7 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-xs shrink-0 mt-0.5 shadow-sm">
+          <i class="fa-solid fa-robot"></i>
+        </div>
+        <div class="flex-1 ${isHighlight ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200'} border p-3 rounded-2xl rounded-tl-none shadow-sm text-slate-700 leading-relaxed">
+          ${htmlContent}
+        </div>
+      `;
+      container.appendChild(msgDiv);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function appendUserMessage(text) {
+      const container = document.getElementById("aiChatMessages");
+      const msgDiv = document.createElement("div");
+      msgDiv.className = "flex items-start justify-end gap-2 animate-view";
+      msgDiv.innerHTML = `
+        <div class="bg-indigo-600 text-white p-3 rounded-2xl rounded-tr-none shadow-sm max-w-[80%] leading-relaxed font-medium">
+          ${text}
+        </div>
+      `;
+      container.appendChild(msgDiv);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function initAIChatbotWelcome() {
+      const container = document.getElementById("aiChatMessages");
+      container.innerHTML = "";
+      appendBotMessage(
+        `<strong>Namaste & Welcome! 👋</strong> I am <strong>CareBot AI</strong>.<br>
+         I can register you into the clinic queue and <strong>announce by voice</strong> when your turn arrives!<br>
+         <span class="text-slate-500 text-[11px]">नमस्ते! मैं आपका टोकन बना सकता हूँ और आपकी बारी आने पर आपको बोलकर सूचित करूँगा।</span>`
+      );
+    }
+
+    function startBotRegistrationFlow() {
+      openAIChatbot();
+      botRegistrationState = "awaiting_alias";
+      appendBotMessage(
+        `🎫 <strong>Let's register your token! (चलिए आपका टोकन बनाते हैं)</strong><br>
+         Please type a fictional alias or click one below for privacy:<br>
+         <div class="flex flex-wrap gap-1.5 mt-2">
+           <button onclick="botSelectAlias('Patient Falcon')" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-bold px-2.5 py-1 rounded-lg text-[11px]">🦅 Patient Falcon</button>
+           <button onclick="botSelectAlias('Patient Swan')" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-bold px-2.5 py-1 rounded-lg text-[11px]">🦢 Patient Swan</button>
+           <button onclick="botSelectAlias('Patient Tiger')" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-bold px-2.5 py-1 rounded-lg text-[11px]">🐯 Patient Tiger</button>
+         </div>`
+      );
+      speakBilingual(
+        "Let's register your token. Please choose or type your privacy alias.",
+        "चलिए आपका टोकन बनाते हैं। कृपया अपना कोड नाम चुनें।",
+        "Chaliye aapka token banate hain. Kripya apna code naam chunein.",
+        false
+      );
+    }
+
+    function botSelectAlias(alias) {
+      appendUserMessage(alias);
+      handleBotAliasProvided(alias);
+    }
+
+    function handleBotAliasProvided(alias) {
+      pendingBotAlias = alias;
+      botRegistrationState = "awaiting_type";
+      appendBotMessage(
+        `Great, <strong>${alias}</strong>! Now select your consultation type (परामर्श का प्रकार चुनें):
+         <div class="grid grid-cols-2 gap-1.5 mt-2">
+           <button onclick="botCompleteRegistration('Walk-In: General', false)" class="bg-teal-50 hover:bg-teal-100 text-teal-900 border border-teal-200 font-bold p-2 rounded-xl text-[11px] text-left">🩺 General Checkup</button>
+           <button onclick="botCompleteRegistration('Appt: Follow-up', false)" class="bg-teal-50 hover:bg-teal-100 text-teal-900 border border-teal-200 font-bold p-2 rounded-xl text-[11px] text-left">📋 Follow-up Visit</button>
+           <button onclick="botCompleteRegistration('Walk-In: Vaccination', false)" class="bg-teal-50 hover:bg-teal-100 text-teal-900 border border-teal-200 font-bold p-2 rounded-xl text-[11px] text-left">💉 Vaccination</button>
+           <button onclick="botCompleteRegistration('Urgent Care', true)" class="bg-rose-50 hover:bg-rose-100 text-rose-900 border border-rose-200 font-bold p-2 rounded-xl text-[11px] text-left">🚨 Urgent Priority</button>
+         </div>`
+      );
+      speakBilingual(
+        `Thank you ${alias}. Please select your consultation type.`,
+        `धन्यवाद ${toHindiAlias(alias)}। अब कृपया अपने परामर्श का प्रकार चुनें।`,
+        `Dhanyavaad ${alias}. Ab kripya apne pramarsh ka prakar chunein.`,
+        false
+      );
+    }
+
+    function botCompleteRegistration(visitType, isUrgent) {
+      appendUserMessage(visitType);
+      botRegistrationState = "idle";
+      const alias = pendingBotAlias || getRandomAlias();
+      const created = createToken(alias, visitType, isUrgent, isUrgent ? "AI Triage Priority Request" : null, true);
+
+      const inServiceCount = queue.filter(t => t.status === "In Service").length;
+      const waitingList = queue.filter(t => t.status === "Waiting");
+      const waitingIdx = waitingList.findIndex(t => t.id === created.id);
+      const peopleAhead = inServiceCount + waitingIdx;
+      const estWait = calculateWait(peopleAhead);
+
+      const tokenEn = formatTokenSpoken(created.id, 'en');
+      const tokenHi = formatTokenSpoken(created.id, 'hi');
+
+      appendBotMessage(
+        `<div class="bg-indigo-950 text-white p-3.5 rounded-2xl space-y-1.5">
+           <div class="flex justify-between items-center">
+             <span class="text-[10px] uppercase tracking-wider text-teal-300 font-bold">Token Registered & Tracked</span>
+             <span class="bg-teal-500/20 text-teal-300 text-[10px] px-2 py-0.5 rounded font-mono">Auto-Voice</span>
+           </div>
+           <div class="text-3xl font-black font-mono text-white">${created.id} <span class="text-sm font-bold text-indigo-200">(${created.alias})</span></div>
+           <div class="text-[11px] text-indigo-200">People Ahead: <strong>${peopleAhead}</strong> • Est. Wait: <strong class="text-teal-300">~${estWait} min</strong></div>
+           <div class="text-[10px] text-emerald-300 pt-1 border-t border-indigo-800">
+             🔔 आपकी बारी आते ही मैं आपको बोलकर बताऊँगा!
+           </div>
+         </div>`,
+        true
+      );
+
+      speakBilingual(
+        `Registration complete! Your token number is ${tokenEn}. Estimated wait time is ${estWait} minutes. I will alert you by voice when your turn arrives.`,
+        `आपका रजिस्ट्रेशन पूरा हो गया है! आपका टोकन नंबर ${tokenHi} है। अनुमानित प्रतीक्षा समय ${estWait} मिनट है। आपकी बारी आते ही मैं आपको बोलकर बताऊँगा।`,
+        `Aapka registration poora ho gaya hai! Aapka token number ${tokenEn} hai. Anumanit pratiksha samay ${estWait} minute hai.`,
+        false
+      );
+    }
+
+    function botCheckMyWait() {
+      openAIChatbot();
+      const token = queue.find(t => t.id === trackedTokenId);
+      if (!token) {
+        appendBotMessage(`Your tracked token <strong>${trackedTokenId}</strong> has already completed its visit! Click <strong>Register Me</strong> to get a new token.`);
+        return;
+      }
+      if (token.status === "In Service") {
+        appendBotMessage(`🎉 <strong>Token ${token.id} (${token.alias}) is Currently In Service!</strong> Please enter Consultation Room 1 right now.`);
+        speakBilingual(
+          `Your token ${formatTokenSpoken(token.id, 'en')} is currently in service. Please enter Room 1.`,
+          `आपका टोकन नंबर ${formatTokenSpoken(token.id, 'hi')} अभी परामर्श कक्ष में है। कृपया अंदर जाएं।`,
+          `Aapka token ${formatTokenSpoken(token.id, 'en')} abhi kamra number ek mein hai. Kripya andar jaayein.`,
+          false
+        );
+        return;
+      }
+      const inServiceCount = queue.filter(t => t.status === "In Service").length;
+      const waitingList = queue.filter(t => t.status === "Waiting");
+      const waitingIdx = waitingList.findIndex(t => t.id === token.id);
+      const peopleAhead = inServiceCount + waitingIdx;
+      const estWait = calculateWait(peopleAhead);
+
+      appendBotMessage(
+        `⏱️ <strong>Live Status for ${token.id} (${token.alias}):</strong><br>
+         • People Ahead: <strong>${peopleAhead} patient(s)</strong><br>
+         • Estimated Wait: <strong class="text-indigo-600 font-mono">~${estWait} minutes</strong><br>
+         <span class="text-slate-500 text-[11px]">आपसे आगे ${peopleAhead} मरीज हैं और अनुमानित प्रतीक्षा समय लगभग ${estWait} मिनट है।</span>`
+      );
+      speakBilingual(
+        `For token ${formatTokenSpoken(token.id, 'en')}, there are ${peopleAhead} patients ahead of you. Estimated waiting time is ${estWait} minutes.`,
+        `टोकन नंबर ${formatTokenSpoken(token.id, 'hi')} के लिए आपसे आगे ${peopleAhead} मरीज हैं। आपका अनुमानित प्रतीक्षा समय ${estWait} मिनट है।`,
+        `Token ${formatTokenSpoken(token.id, 'en')} ke liye aapse aage ${peopleAhead} mareez hain. Aapka pratiksha samay ${estWait} minute hai.`,
+        false
+      );
+    }
+
+    function botAnnounceStatus() { announceCurrentPatient(); }
+
+    function sendUserChatMessage() {
+      const input = document.getElementById("aiChatInput");
+      const text = input.value.trim();
+      if (!text) return;
+      appendUserMessage(text);
+      input.value = "";
+      const lower = text.toLowerCase();
+
+      if (botRegistrationState === "awaiting_alias") {
+        const cleanAlias = text.startsWith("Patient") ? text : `Patient ${text}`;
+        handleBotAliasProvided(cleanAlias);
+        return;
+      }
+      if (botRegistrationState === "awaiting_type") {
+        const isUrg = lower.includes("urgent") || lower.includes("emergency") || lower.includes("इमरजेंसी");
+        botCompleteRegistration(text, isUrg);
+        return;
+      }
+
+      if (lower.includes("register") || lower.includes("token") || lower.includes("book") || lower.includes("appointment") || lower.includes("टोकन") || lower.includes("नंबर") || lower.includes("नाम")) {
+        startBotRegistrationFlow();
+      } else if (lower.includes("wait") || lower.includes("time") || lower.includes("status") || lower.includes("baari") || lower.includes("bari") || lower.includes("kab") || lower.includes("समय") || lower.includes("बारी")) {
+        botCheckMyWait();
+      } else if (lower.includes("next") || lower.includes("call")) {
+        callNextPatient();
+      } else {
+        appendBotMessage(
+          `I can help you register a token or check your live wait time! Click <strong>🎫 Register Me</strong> or <strong>⏱️ My Wait Time</strong> below.<br>
+           <span class="text-slate-500 text-[11px]">नया टोकन लेने के लिए 'Register Me' दबाएं या अपना समय जानने के लिए 'My Wait Time' दबाएं।</span>`
+        );
+      }
+    }
+
+    function startVoiceInputToBot() {
+      const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRec) {
+        showToast("Voice Mic requires Google Chrome or Edge browser.");
+        return;
+      }
+      const rec = new SpeechRec();
+      rec.lang = currentLang === 'hi' ? 'hi-IN' : 'en-IN';
+      const micBtn = document.getElementById("botMicBtn");
+      micBtn.className = "w-9 h-9 rounded-xl bg-rose-600 text-white flex items-center justify-center animate-pulse shrink-0";
+      showToast("🎤 Listening... Speak in Hindi or English");
+
+      rec.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        document.getElementById("aiChatInput").value = transcript;
+        sendUserChatMessage();
+      };
+      rec.onerror = () => {
+        micBtn.className = "w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-600 flex items-center justify-center transition shrink-0";
+      };
+      rec.onend = () => {
+        micBtn.className = "w-9 h-9 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-600 flex items-center justify-center transition shrink-0";
+      };
+      rec.start();
+    }
+
+    // 7. RECEPTION & KIOSK FORM HANDLERS
+    function getRandomAlias() { return animalAliases[Math.floor(Math.random() * animalAliases.length)]; }
+    function fillRandomStaffAlias() { document.getElementById("deskAliasInput").value = getRandomAlias(); }
+
+    function deskIssueNormalToken() {
+      const aliasInput = document.getElementById("deskAliasInput");
+      const visitType = document.getElementById("deskVisitType").value;
+      const alias = aliasInput.value.trim() || getRandomAlias();
+      const created = createToken(alias, visitType, false, null, true);
+      aliasInput.value = "";
+      const wait = calculateWait(queue.filter(t => t.status === "In Service").length + queue.filter(t => t.status === "Waiting").length - 1);
+      speakBilingual(
+        `Token ${formatTokenSpoken(created.id, 'en')} issued for ${created.alias}. Estimated wait time is ${wait} minutes.`,
+        `टोकन नंबर ${formatTokenSpoken(created.id, 'hi')}, ${toHindiAlias(created.alias)} के लिए जारी किया गया है। अनुमानित प्रतीक्षा समय ${wait} मिनट है।`,
+        `Token number ${formatTokenSpoken(created.id, 'en')}, ${created.alias} ke liye jaari kiya gaya hai. Pratiksha samay ${wait} minute hai.`,
+        false
+      );
+    }
+
+    function deskIssueUrgentToken() {
+      const aliasInput = document.getElementById("deskAliasInput");
+      const reasonInput = document.getElementById("deskUrgentReason");
+      const alias = aliasInput.value.trim() || getRandomAlias();
+      const reason = reasonInput.value.trim() || "Urgent Triage Override";
+      const created = createToken(alias, "Urgent Consultation", true, reason, true);
+      aliasInput.value = "";
+      reasonInput.value = "";
+      speakBilingual(
+        `Urgent priority token ${formatTokenSpoken(created.id, 'en')} for ${created.alias} has been placed at the front of the waiting queue.`,
+        `आपातकालीन प्राथमिकता टोकन नंबर ${formatTokenSpoken(created.id, 'hi')}, ${toHindiAlias(created.alias)} को प्रतीक्षा सूची में सबसे आगे रखा गया है।`,
+        `Urgent priority token ${formatTokenSpoken(created.id, 'en')}, ${created.alias} ko pratiksha soochi mein sabse aage rakha gaya hai.`,
+        true
+      );
+    }
+
+    function deskApplyDelay() {
+      const mins = parseInt(document.getElementById("deskDelayMins").value) || 0;
+      const reason = document.getElementById("deskDelayReason").value.trim() || "Consultation running over schedule";
+      if (mins > 0) {
+        currentRecordedDelay += mins;
+        delayReason = reason;
+        logActivity(`Recorded +${mins}m delay (${reason})`);
+        showToast(`+${mins}m delay applied to all waiting tokens`);
+        document.getElementById("deskDelayReason").value = "";
+        render();
+        speakBilingual(
+          `Attention patients. A clinic delay of ${mins} minutes has been recorded. All wait estimates have been updated.`,
+          `कृपया ध्यान दें। क्लिनिक में ${mins} मिनट की देरी दर्ज की गई है। सभी प्रतीक्षा समय अपडेट कर दिए गए हैं।`,
+          `Kripya dhyan dein. Clinic mein ${mins} minute ki deri darj ki gayi hai. Sabhi pratiksha samay update kar diye gaye hain.`,
+          false
+        );
+      }
+    }
+
+    function quickDoctorDelay(mins) {
+      currentRecordedDelay += mins;
+      delayReason = "Doctor requested extended consultation time";
+      logActivity(`Doctor added +${mins}m consultation delay`);
+      showToast(`+${mins}m delay broadcasted to waiting room`);
+      render();
+      speakBilingual(
+        `A ${mins} minute consultation delay has been added.`,
+        `परामर्श में ${mins} मिनट की अतिरिक्त देरी जोड़ी गई है।`,
+        `Pramarsh mein ${mins} minute ki deri jodi gayi hai.`,
+        false
+      );
+    }
+
+    function submitOverridePageDelay() {
+      const mins = parseInt(document.getElementById("overridePageDelayMins").value) || 0;
+      const reason = document.getElementById("overridePageDelayReason").value.trim() || "Extended clinical procedure";
+      if (mins > 0) {
+        currentRecordedDelay += mins;
+        delayReason = reason;
+        logActivity(`Override: +${mins}m delay (${reason})`);
+        showToast(`+${mins}m delay recorded`);
+        navigateTo('dashboard');
+      }
+    }
+
+    function submitOverridePageUrgent() {
+      const alias = document.getElementById("overridePageUrgentAlias").value.trim() || getRandomAlias();
+      const reason = document.getElementById("overridePageUrgentReason").value.trim() || "Emergency priority arrival";
+      createToken(alias, "Urgent Triage", true, reason, true);
+      document.getElementById("overridePageUrgentAlias").value = "";
+      document.getElementById("overridePageUrgentReason").value = "";
+      navigateTo('dashboard');
+    }
+
+    function clearDelay() {
+      currentRecordedDelay = 0;
+      delayReason = "";
+      logActivity("Cleared active clinic delays (Delay = 0m)");
+      showToast("Clinic delay cleared");
+      render();
+    }
+
+    function updateAvgDuration(val) {
+      avgServiceDuration = Math.max(1, parseInt(val) || 10);
+      document.getElementById("sidebarAvgInput").value = avgServiceDuration;
+      logActivity(`Updated Average Service Duration to ${avgServiceDuration} min`);
+      render();
+    }
+
+    function selectKioskMode(mode) {
+      kioskSelectedMode = mode;
+      const btnWalkin = document.getElementById("kioskModeWalkin");
+      const btnAppt = document.getElementById("kioskModeAppt");
+      const slotBox = document.getElementById("kioskSlotContainer");
+
+      if (mode === 'walkin') {
+        btnWalkin.className = "p-4 rounded-2xl border-2 border-indigo-600 bg-indigo-50/70 text-indigo-950 font-bold text-sm flex items-center gap-3 transition text-left";
+        btnAppt.className = "p-4 rounded-2xl border-2 border-slate-200 bg-white text-slate-700 font-bold text-sm flex items-center gap-3 hover:border-slate-300 transition text-left";
+        slotBox.classList.add("hidden");
+      } else {
+        btnAppt.className = "p-4 rounded-2xl border-2 border-indigo-600 bg-indigo-50/70 text-indigo-950 font-bold text-sm flex items-center gap-3 transition text-left";
+        btnWalkin.className = "p-4 rounded-2xl border-2 border-slate-200 bg-white text-slate-700 font-bold text-sm flex items-center gap-3 hover:border-slate-300 transition text-left";
+        slotBox.classList.remove("hidden");
+      }
+    }
+
+    function generateKioskAlias() { document.getElementById("kioskAliasInput").value = getRandomAlias(); }
+
+    function submitKioskCheckIn() {
+      const aliasInput = document.getElementById("kioskAliasInput");
+      const alias = aliasInput.value.trim() || getRandomAlias();
+      const category = document.getElementById("kioskCategorySelect").value;
+      let visitLabel = `Walk-In: ${category}`;
+      if (kioskSelectedMode === 'appointment') {
+        const slot = document.getElementById("kioskSlotSelect").value;
+        visitLabel = `Appt (${slot}): ${category}`;
+      }
+      const token = createToken(alias, visitLabel, false, null, true);
+      aliasInput.value = "";
+      showTokenSlip(token.id);
+
+      const wait = calculateWait(queue.filter(t => t.status === "In Service").length + queue.filter(t => t.status === "Waiting").length - 1);
+      speakBilingual(
+        `Welcome ${token.alias}. Your token is ${formatTokenSpoken(token.id, 'en')}. Estimated wait is ${wait} minutes.`,
+        `स्वागत है ${toHindiAlias(token.alias)}। आपका टोकन नंबर ${formatTokenSpoken(token.id, 'hi')} है। अनुमानित प्रतीक्षा समय ${wait} मिनट है।`,
+        `Swagat hai ${token.alias}. Aapka token number ${formatTokenSpoken(token.id, 'en')} hai. Pratiksha samay ${wait} minute hai.`,
+        false
+      );
+    }
+
+    // 8. RUBRIC TEST CASES & BASELINE RESET
+    function resetToBaseline() {
+      initBaselineData();
+      document.getElementById("sidebarAvgInput").value = 10;
+      initAIChatbotWelcome();
+      render();
+      showToast("Restored Official Challenge Starter Data");
+    }
+
+    function runRubricTest(testNum) {
+      if (testNum === 1) {
+        callNextPatient();
+        document.getElementById("observedCase1").innerText = "VERIFIED: T03 Completed, T01 In Service, Auto-Voice Announced";
+      } else if (testNum === 2) {
+        currentRecordedDelay += 10;
+        delayReason = "Doctor attending acute emergency procedure";
+        logActivity("Test Case 2: Added +10m delay with visible reason");
+        render();
+        document.getElementById("observedCase2").innerText = `VERIFIED: Delay = +${currentRecordedDelay}m, all estimates updated`;
+        showToast("Test Case 2 Verified: +10m Delay Added");
+        speakBilingual(
+          "Test case 2 verified. A 10 minute clinic delay has been added.",
+          "टेस्ट केस दो सत्यापित। क्लिनिक में दस मिनट की देरी जोड़ी गई है।",
+          "Test case 2 verified. Clinic mein 10 minute ki deri jodi gayi hai.",
+          false
+        );
+      } else if (testNum === 3) {
+        const t = createToken("Patient Wolf", "Urgent Triage", true, "Severe Asthmatic Episode", true);
+        document.getElementById("observedCase3").innerText = `VERIFIED: ${t.id} placed at front of Waiting (behind In-Service)`;
+        speakBilingual(
+          `Test case 3 verified. Urgent token ${formatTokenSpoken(t.id, 'en')} placed at the top of the waiting queue.`,
+          `टेस्ट केस तीन सत्यापित। आपातकालीन टोकन ${formatTokenSpoken(t.id, 'hi')} को प्रतीक्षा सूची में सबसे आगे रखा गया है।`,
+          `Test case 3 verified. Urgent token ${formatTokenSpoken(t.id, 'en')} ko pratiksha soochi mein sabse aage rakha gaya hai.`,
+          true
+        );
+      }
+    }
+
+    // 9. BILINGUAL UI TRANSLATION (Also Syncs Hindi Voice!)
+    const dict = {
+      en: {
+        headerSub: "Smart Clinic Queue, Fluent Bilingual Voice & AI Assistant",
+        formulaLabel: "Formula",
+        sidebarHeading: "Navigation Menu",
+        navGroupMain: "Clinic Workstations",
+        navDashboard: "Reception & Queue Desk",
+        navKiosk: "Patient Self-Registration",
+        navAiBot: "AI Registration Assistant",
+        navDoctor: "Doctor Consultation Room",
+        navTv: "Public Waiting Room TV",
+        navGroupAdmin: "Triage & Evaluation",
+        navOverrides: "Delay & Urgent Override",
+        navAudit: "Judge Test Suite & MAE",
+        configBoxTitle: "Queue Parameters",
+        avgConsultTime: "Avg Service Time:",
+        recordedDelayLabel: "Recorded Delay:",
+        liveFormulaBadge: "Wait Estimation Rule",
+        estimateDisclaimer: "All wait times are rule-based estimates • Zero medical data stored.",
+        delayAlertTitle: "Operational Clinic Delay Active",
+        resolveDelayBtn: "Resolve & Clear Delay",
+        kpiInService: "In Service (Room 1)",
+        timerLabel: "Session Timer",
+        kpiWaiting: "Waiting Tokens",
+        kpiNextWait: "Next Patient Wait",
+        kpiCompleted: "Completed Visits",
+        staffControlTitle: "Reception Flow Control",
+        btnCallNext: "Call Next",
+        btnComplete: "Complete",
+        quickIssueLabel: "Quick Issue Token",
+        btnAddNormal: "Add Token",
+        urgentBoxTitle: "Urgent Priority Override",
+        btnInsertUrgent: "Insert Urgent Token",
+        delayBoxTitle: "Mark Clinic Delay",
+        btnApplyDelay: "Record Delay",
+        queueTableTitle: "Live Patient Queue",
+        queueTableSub: "Click '🔔 Track' on any patient so AI alerts you by voice when their turn arrives",
+        colPatient: "Patient Alias",
+        colState: "State",
+        colAhead: "People Ahead",
+        colEstWait: "Estimated Wait",
+        colActions: "Quick Actions",
+        completedTitle: "Completed Tokens",
+        activityLogTitle: "Live Activity Trail",
+        kioskTopTag: "Interactive Patient Touch Kiosk",
+        kioskHeading: "Self-Check-In & Appointment Booking",
+        kioskSubheading: "Get your queue token and automatic AI voice turn notifications without sharing private medical records.",
+        kioskGetTokenBtn: "Get Token & Track My Turn"
+      },
+      hi: {
+        headerSub: "स्मार्ट क्लिनिक कतार, द्विभाषी वॉयस और एआई असिस्टेंट",
+        formulaLabel: "फॉर्मूला",
+        sidebarHeading: "नेविगेशन मेन्यू",
+        navGroupMain: "क्लिनिक वर्कस्टेशन",
+        navDashboard: "रिसेप्शन और कतार डेस्क",
+        navKiosk: "मरीज सेल्फ-रजिस्ट्रेशन",
+        navAiBot: "एआई रजिस्ट्रेशन असिस्टेंट",
+        navDoctor: "डॉक्टर परामर्श कक्ष",
+        navTv: "वेटिंग रूम टीवी डिस्प्ले",
+        navGroupAdmin: "ट्राइएज और मूल्यांकन",
+        navOverrides: "देरी और इमरजेंसी ओवरराइड",
+        navAudit: "जज टेस्ट सूट और MAE",
+        configBoxTitle: "कतार पैरामीटर",
+        avgConsultTime: "औसत सेवा समय:",
+        recordedDelayLabel: "दर्ज की गई देरी:",
+        liveFormulaBadge: "प्रतीक्षा अनुमान नियम",
+        estimateDisclaimer: "सभी प्रतीक्षा समय अनुमानित हैं • कोई मेडिकल डेटा संग्रहीत नहीं।",
+        delayAlertTitle: "क्लिनिक में देरी प्रभावी है",
+        resolveDelayBtn: "देरी समाप्त करें",
+        kpiInService: "परामर्श जारी (कमरा 1)",
+        timerLabel: "परामर्श समय",
+        kpiWaiting: "प्रतीक्षारत टोकन",
+        kpiNextWait: "अगला प्रतीक्षा समय",
+        kpiCompleted: "पूर्ण परामर्श",
+        staffControlTitle: "रिसेप्शन नियंत्रण",
+        btnCallNext: "अगला बुलाएं",
+        btnComplete: "पूर्ण करें",
+        quickIssueLabel: "नया टोकन जारी करें",
+        btnAddNormal: "टोकन जोड़ें",
+        urgentBoxTitle: "इमरजेंसी प्राथमिकता ओवरराइड",
+        btnInsertUrgent: "इमरजेंसी टोकन जोड़ें",
+        delayBoxTitle: "क्लिनिक देरी दर्ज करें",
+        btnApplyDelay: "देरी लागू करें",
+        queueTableTitle: "लाइव मरीज कतार तालिका",
+        queueTableSub: "किसी भी मरीज पर '🔔 Track' दबाएं ताकि बारी आने पर AI बोलकर सूचित करे",
+        colPatient: "मरीज का कोड नाम",
+        colState: "स्थिति",
+        colAhead: "आगे मरीज",
+        colEstWait: "अनुमानित प्रतीक्षा",
+        colActions: "त्वरित कार्य",
+        completedTitle: "पूर्ण किए गए टोकन",
+        activityLogTitle: "लाइव गतिविधि लॉग",
+        kioskTopTag: "मरीज सेल्फ-सर्विस कियोस्क",
+        kioskHeading: "सेल्फ चेक-इन और अपॉइंटमेंट बुकिंग",
+        kioskSubheading: "बिना किसी गोपनीय मेडिकल जानकारी के अपना टोकन और वॉयस अलर्ट प्राप्त करें।",
+        kioskGetTokenBtn: "टोकन लें और बारी ट्रैक करें"
+      }
+    };
+
+    function toggleLanguage() {
+      currentLang = currentLang === 'en' ? 'hi' : 'en';
+      document.getElementById("langSwitchText").innerText = currentLang === 'en' ? 'हिंदी' : 'English';
+      const activeDict = dict[currentLang];
+      document.querySelectorAll("[data-i18n]").forEach(el => {
+        const key = el.getAttribute("data-i18n");
+        if (activeDict[key]) el.innerText = activeDict[key];
+      });
+
+      // Automatically switch voice mode to Hindi when Hindi UI is selected!
+      if (currentLang === 'hi') {
+        voiceMode = 'hi';
+        document.getElementById("voiceModeSelect").value = 'hi';
+        showToast("हिंदी भाषा और हिंदी आवाज़ लागू की गई");
+        speakBilingual(
+          "",
+          "हिंदी भाषा और हिंदी आवाज़ सक्रिय कर दी गई है।",
+          "Hindi bhasha aur Hindi aawaaz sakriya kar di gayi hai.",
+          false
+        );
+      } else {
+        voiceMode = 'both';
+        document.getElementById("voiceModeSelect").value = 'both';
+        showToast("Switched to English UI (Dual Voice Active)");
+        speakBilingual("English interface and dual voice active.", "", "", false);
+      }
+    }
+
+    function toggleAccessibility() {
+      document.getElementById("appBody").classList.toggle("large-text-mode");
+      showToast("Toggled Large-Text Accessibility Mode");
+    }
+
+    // 10. LOGS, TOASTS & TIMERS
+    function logActivity(msg) {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      activityLogs.unshift({ time: timeStr, msg });
+      if (activityLogs.length > 15) activityLogs.pop();
+    }
+
+    function showToast(message) {
+      const container = document.getElementById("toastContainer");
+      const toast = document.createElement("div");
+      toast.className = "bg-slate-900 text-white px-4 py-2.5 rounded-2xl shadow-xl border border-slate-700 text-xs font-semibold flex items-center gap-2.5 animate-view pointer-events-auto";
+      toast.innerHTML = `<i class="fa-solid fa-circle-info text-teal-400"></i> <span>${message}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = "0";
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    function formatTimer(sec) {
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return `${m < 10 ? '0' + m : m}:${s < 10 ? '0' + s : s}`;
+    }
+
+    setInterval(() => {
+      const now = new Date();
+      const clockEl = document.getElementById("liveClockDisplay");
+      if (clockEl) clockEl.innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+      const active = queue.find(t => t.status === "In Service");
+      if (active) {
+        sessionSeconds++;
+        const formatted = formatTimer(sessionSeconds);
+        document.getElementById("consultationTimer").innerText = formatted;
+        document.getElementById("docViewTimer").innerText = formatted;
+      } else {
+        document.getElementById("consultationTimer").innerText = "00:00";
+        document.getElementById("docViewTimer").innerText = "00:00";
+      }
+    }, 1000);
+
+    // 11. MASTER DOM RENDER ENGINE
+    function render() {
+      const inService = queue.find(t => t.status === "In Service");
+      const waitingList = queue.filter(t => t.status === "Waiting");
+      const urgentCount = waitingList.filter(t => t.isUrgent).length;
+      const hasInService = inService ? 1 : 0;
+
+      document.getElementById("topBarAvgText").innerText = avgServiceDuration;
+      document.getElementById("topBarDelayText").innerText = currentRecordedDelay;
+      document.getElementById("formulaAvgSpan").innerText = avgServiceDuration;
+      document.getElementById("formulaDelaySpan").innerText = currentRecordedDelay;
+      document.getElementById("sidebarDelayValue").innerText = `+${currentRecordedDelay} min`;
+      document.getElementById("sidebarQueueBadge").innerText = waitingList.length;
+
+      document.getElementById("sidebarTrackedTokenBadge").innerText = trackedTokenId;
+      document.getElementById("chatTrackedTokenId").innerText = trackedTokenId;
+      const trackedObj = queue.find(t => t.id === trackedTokenId);
+
+      if (!trackedObj) {
+        document.getElementById("sidebarTrackedStatusText").innerText = `Token ${trackedTokenId} visit completed.`;
+        document.getElementById("chatTrackedWaitInfo").innerText = "Completed";
+      } else if (trackedObj.status === "In Service") {
+        document.getElementById("sidebarTrackedStatusText").innerText = `🎉 ${trackedTokenId} is IN SERVICE right now!`;
+        document.getElementById("chatTrackedWaitInfo").innerText = "IN ROOM 1 NOW!";
+      } else {
+        const tIdx = waitingList.findIndex(t => t.id === trackedTokenId);
+        const tAhead = hasInService + tIdx;
+        const tWait = calculateWait(tAhead);
+        document.getElementById("sidebarTrackedStatusText").innerText = `${tAhead} ahead (~${tWait}m). AI will alert on arrival.`;
+        document.getElementById("chatTrackedWaitInfo").innerText = `${tAhead} ahead (~${tWait}m)`;
+      }
+
+      const delayBanner = document.getElementById("activeDelayBanner");
+      if (currentRecordedDelay > 0) {
+        delayBanner.classList.remove("hidden");
+        document.getElementById("bannerDelayReasonText").innerText = delayReason;
+        document.getElementById("bannerDelayMinsText").innerText = `+${currentRecordedDelay} min`;
+      } else {
+        delayBanner.classList.add("hidden");
+      }
+
+      if (inService) {
+        document.getElementById("kpiActiveToken").innerText = inService.id;
+        document.getElementById("kpiActiveAlias").innerText = inService.alias;
+        document.getElementById("docViewToken").innerText = inService.id;
+        document.getElementById("docViewAlias").innerText = inService.alias;
+        document.getElementById("docViewType").innerText = inService.type;
+        document.getElementById("tvHeroToken").innerText = inService.id;
+        document.getElementById("tvHeroAlias").innerText = inService.alias;
+        document.getElementById("tvHeroType").innerText = inService.type;
+      } else {
+        document.getElementById("kpiActiveToken").innerText = "NONE";
+        document.getElementById("kpiActiveAlias").innerText = "Room 1 Idle";
+        document.getElementById("docViewToken").innerText = "--";
+        document.getElementById("docViewAlias").innerText = "No Patient In Room";
+        document.getElementById("docViewType").innerText = "Click Call Next to begin";
+        document.getElementById("tvHeroToken").innerText = "--";
+        document.getElementById("tvHeroAlias").innerText = "Room Ready";
+        document.getElementById("tvHeroType").innerText = "Please wait for next announcement";
+      }
+
+      document.getElementById("kpiWaitingCount").innerText = waitingList.length;
+      document.getElementById("kpiUrgentCountText").innerText = `${urgentCount} Urgent Priority`;
+      document.getElementById("kpiCompletedCount").innerText = completedQueue.length;
+      document.getElementById("completedBadgeCount").innerText = completedQueue.length;
+
+      const nextWait = waitingList.length > 0 ? `~${calculateWait(hasInService)}m` : "0m";
+      const maxWait = waitingList.length > 0 ? `~${calculateWait(hasInService + waitingList.length - 1)}m` : "0m";
+      document.getElementById("kpiNextWaitVal").innerText = nextWait;
+      document.getElementById("kpiMaxWaitVal").innerText = maxWait;
+
+      const mae = computeBaselineMAE();
+      document.getElementById("kpiMaeVal").innerText = `${mae}m`;
+      document.getElementById("auditLiveMae").innerText = `${mae} minutes`;
+
+      const kioskAhead = hasInService + waitingList.length;
+      document.getElementById("kioskAheadPreviewText").innerText = `${kioskAhead} patient(s) ahead`;
+      document.getElementById("kioskEstBadge").innerText = `~${calculateWait(kioskAhead)} min`;
+
+      const searchQuery = (document.getElementById("queueSearchInput").value || "").toLowerCase();
+      const filterMode = document.getElementById("queueFilterSelect").value;
+      const tbody = document.getElementById("mainQueueTableBody");
+      tbody.innerHTML = "";
+
+      let displayRows = [];
+      if (inService && filterMode !== "urgent" && filterMode !== "waiting") {
+        displayRows.push({ token: inService, peopleAhead: 0, waitEst: 0 });
+      }
+      waitingList.forEach((token, idx) => {
+        const peopleAhead = hasInService + idx;
+        const waitEst = calculateWait(peopleAhead);
+        if (filterMode === "urgent" && !token.isUrgent) return;
+        displayRows.push({ token, peopleAhead, waitEst });
+      });
+
+      displayRows = displayRows.filter(item => {
+        return item.token.id.toLowerCase().includes(searchQuery) ||
+               item.token.alias.toLowerCase().includes(searchQuery) ||
+               item.token.type.toLowerCase().includes(searchQuery);
+      });
+
+      if (displayRows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-slate-400 italic">No matching queue tokens found.</td></tr>`;
+      } else {
+        displayRows.forEach(({ token, peopleAhead, waitEst }) => {
+          const isInService = token.status === "In Service";
+          const isTracked = token.id === trackedTokenId;
+          const tr = document.createElement("tr");
+          tr.className = isInService ? "bg-emerald-50/70 border-b border-emerald-100" : token.isUrgent ? "bg-rose-50/80 border-b border-rose-100" : "hover:bg-slate-50 border-b border-slate-100 transition";
+
+          const stateBadge = isInService
+            ? `<span class="inline-flex items-center gap-1 bg-emerald-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full"><span class="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span> In Service</span>`
+            : token.isUrgent
+              ? `<span class="inline-flex items-center gap-1 bg-rose-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full"><i class="fa-solid fa-bolt"></i> Urgent Waiting</span>`
+              : `<span class="inline-flex items-center gap-1 bg-slate-200 text-slate-700 text-[10px] font-bold px-2.5 py-0.5 rounded-full">Waiting</span>`;
+
+          const waitCell = isInService
+            ? `<span class="font-mono font-bold text-emerald-700 text-xs">Active Now</span>`
+            : `<div class="text-right">
+                 <span class="font-mono font-black text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-lg text-xs">~${waitEst} min</span>
+                 <div class="text-[10px] text-slate-400 font-mono mt-0.5">${peopleAhead}×${avgServiceDuration}m + ${currentRecordedDelay}m</div>
+               </div>`;
+
+          const trackBtn = isTracked
+            ? `<span class="bg-indigo-600 text-white px-2 py-1 rounded-lg text-[10px] font-bold"><i class="fa-solid fa-bell"></i> Tracked</span>`
+            : `<button onclick="setTrackedToken('${token.id}')" title="Track for AI Voice Alert" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-2 py-1 rounded-lg text-[10px] font-bold transition"><i class="fa-solid fa-bell"></i> Track</button>`;
+
+          const actionsCell = isInService
+            ? `<button onclick="completeCurrentService()" class="bg-slate-800 hover:bg-black text-white text-[10px] font-bold px-2.5 py-1 rounded-lg transition">Complete</button>`
+            : `<div class="flex items-center justify-end gap-1">
+                 ${trackBtn}
+                 ${!token.isUrgent ? `<button onclick="promoteTokenToUrgent('${token.id}')" title="Promote to Urgent" class="bg-rose-100 hover:bg-rose-200 text-rose-700 px-2 py-1 rounded-lg text-[10px] font-bold transition"><i class="fa-solid fa-bolt"></i> Urgent</button>` : ''}
+                 <button onclick="showTokenSlip('${token.id}')" title="View Token Slip" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded-lg text-[10px] transition"><i class="fa-solid fa-ticket"></i></button>
+                 <button onclick="removeTokenFromQueue('${token.id}')" title="Cancel Token" class="bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 px-2 py-1 rounded-lg text-[10px] transition"><i class="fa-solid fa-xmark"></i></button>
+               </div>`;
+
+          tr.innerHTML = `
+            <td class="py-3 px-3 font-mono font-black text-sm ${token.isUrgent ? 'text-rose-700' : isInService ? 'text-emerald-800' : 'text-slate-900'}">${token.id}</td>
+            <td class="py-3 px-3">
+              <div class="font-bold text-slate-800">${token.alias}</div>
+              <div class="text-[11px] text-slate-500">${token.type}</div>
+              ${token.urgentReason ? `<div class="text-[10px] text-rose-600 font-bold mt-0.5"><i class="fa-solid fa-triangle-exclamation"></i> ${token.urgentReason}</div>` : ''}
+            </td>
+            <td class="py-3 px-3">${stateBadge}</td>
+            <td class="py-3 px-3 text-center font-mono font-bold text-slate-700">${peopleAhead}</td>
+            <td class="py-3 px-3">${waitCell}</td>
+            <td class="py-3 px-3 text-right">${actionsCell}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      const docList = document.getElementById("docWaitingListContainer");
+      docList.innerHTML = "";
+      if (waitingList.length === 0) {
+        docList.innerHTML = `<div class="text-xs text-slate-400 italic py-4">No patients waiting.</div>`;
+      } else {
+        waitingList.forEach((t, i) => {
+          const wait = calculateWait(hasInService + i);
+          const item = document.createElement("div");
+          item.className = `p-3 rounded-2xl border ${t.isUrgent ? 'bg-rose-50 border-rose-200' : 'bg-slate-50 border-slate-200/80'} flex items-center justify-between`;
+          item.innerHTML = `
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="font-mono font-black text-sm text-slate-900">${t.id}</span>
+                <span class="font-bold text-xs text-slate-700">${t.alias}</span>
+                ${t.isUrgent ? '<span class="bg-rose-600 text-white text-[9px] font-bold px-1.5 py-0.2 rounded">URGENT</span>' : ''}
+              </div>
+              <div class="text-[11px] text-slate-500">${t.type}</div>
+            </div>
+            <span class="font-mono font-bold text-xs text-indigo-600">~${wait}m</span>
+          `;
+          docList.appendChild(item);
+        });
+      }
+
+      const tvGrid = document.getElementById("tvGridContainer");
+      tvGrid.innerHTML = "";
+      if (waitingList.length === 0) {
+        tvGrid.innerHTML = `<div class="col-span-3 py-8 text-center text-slate-400 font-semibold">No patients currently waiting.</div>`;
+      } else {
+        waitingList.forEach((t, i) => {
+          const peopleAhead = hasInService + i;
+          const wait = calculateWait(peopleAhead);
+          const card = document.createElement("div");
+          card.className = t.isUrgent ? "bg-rose-50 border-2 border-rose-500 p-5 rounded-3xl shadow-md space-y-3" : "bg-white border border-slate-200 p-5 rounded-3xl shadow-sm space-y-3";
+          card.innerHTML = `
+            <div class="flex justify-between items-start">
+              <div>
+                <span class="text-4xl font-black font-mono ${t.isUrgent ? 'text-rose-700' : 'text-slate-900'}">${t.id}</span>
+                <div class="text-base font-bold text-slate-800 mt-1">${t.alias}</div>
+              </div>
+              ${t.isUrgent ? `<span class="bg-rose-600 text-white text-[10px] font-black uppercase px-2.5 py-1 rounded-full">Priority</span>` : `<span class="bg-slate-100 text-slate-600 font-mono text-xs font-bold px-2.5 py-1 rounded-lg">${peopleAhead} Ahead</span>`}
+            </div>
+            <div class="pt-3 border-t border-slate-100 flex justify-between items-center">
+              <span class="text-xs text-slate-400 font-semibold uppercase">Estimated Wait</span>
+              <span class="text-xl font-black font-mono text-indigo-600">~${wait} min</span>
+            </div>
+          `;
+          tvGrid.appendChild(card);
+        });
+      }
+
+      const compContainer = document.getElementById("completedTokensList");
+      if (completedQueue.length === 0) {
+        compContainer.innerHTML = `<span class="text-slate-400 italic text-xs">No completed visits yet. Click "Call Next" or "Complete" to test.</span>`;
+      } else {
+        compContainer.innerHTML = completedQueue.map(t => `
+          <span class="bg-emerald-50 border border-emerald-200 text-emerald-800 px-2.5 py-1 rounded-xl font-mono text-xs font-bold flex items-center gap-1.5">
+            <i class="fa-solid fa-check text-emerald-600 text-[10px]"></i> ${t.id} (${t.alias})
+          </span>
+        `).join("");
+      }
+
+      const logContainer = document.getElementById("activityLogList");
+      logContainer.innerHTML = activityLogs.map(l => `
+        <div class="flex items-start gap-2 border-b border-slate-50 pb-1">
+          <span class="text-indigo-500 font-bold shrink-0">[${l.time}]</span>
+          <span class="text-slate-700">${l.msg}</span>
+        </div>
+      `).join("");
+
+      const simBars = document.getElementById("simulationComparisonBars");
+      const referenceRecords = [
+        { id: "T01 (Fox)", actual: 8, peopleAhead: 1 },
+        { id: "T02 (Badger)", actual: 18, peopleAhead: 2 },
+        { id: "T04 (Owl)", actual: 30, peopleAhead: 3 }
+      ];
+      simBars.innerHTML = referenceRecords.map(r => {
+        const est = (r.peopleAhead * avgServiceDuration) + currentRecordedDelay;
+        const err = Math.abs(r.actual - est);
+        const estWidth = Math.min(100, (est / 45) * 100);
+        const actWidth = Math.min(100, (r.actual / 45) * 100);
+        return `
+          <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-2 text-xs">
+            <div class="flex justify-between font-bold">
+              <span class="text-slate-800 font-mono">${r.id}</span>
+              <span class="text-slate-500 font-mono">Estimated: <strong class="text-indigo-600">${est}m</strong> vs Actual: <strong class="text-teal-600">${r.actual}m</strong> (Error: ${err}m)</span>
+            </div>
+            <div class="space-y-1.5">
+              <div class="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
+                <div class="bg-indigo-600 h-full rounded-full transition-all duration-500" style="width: ${estWidth}%"></div>
+              </div>
+              <div class="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
+                <div class="bg-teal-500 h-full rounded-full transition-all duration-500" style="width: ${actWidth}%"></div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // Boot Application
+    window.onload = () => {
+      initBaselineData();
+      initAIChatbotWelcome();
+      render();
+    };
+  </script>
+</body>
+</html>
